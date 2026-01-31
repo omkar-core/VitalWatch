@@ -3,10 +3,9 @@ import { getRows } from '@/lib/griddb-client';
 import type { HealthVital } from '@/lib/types';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { patientId: string } }
+  request: NextRequest
 ) {
-  const patientId = params.patientId;
+  const patientId = request.nextUrl.pathname.split('/')[3];
 
   if (!patientId) {
     return NextResponse.json({ error: 'Patient ID is required' }, { status: 400 });
