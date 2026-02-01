@@ -58,14 +58,21 @@ export async function processWithAzure(vital: ESP32Data): Promise<EstimateHealth
             throw new Error(`Azure Function processing failed with status: ${response.status}`);
         }
 
-        const predictions = await response.json();
+        const azureResponse = await response.json();
+        
+        // The Azure function returns a nested object like { success: true, predictions: { bp_systolic: ... } }
+        const predictions = azureResponse.predictions;
+        
+        if (!predictions) {
+            throw new Error('Azure function response did not contain a "predictions" object.');
+        }
 
         return {
-            estimated_systolic: predictions.systolic || 120,
-            estimated_diastolic: predictions.diastolic || 80,
+            estimated_systolic: predictions.bp_systolic || 120, // Match the python key 'bp_systolic'
+            estimated_diastolic: predictions.bp_diastolic || 80, // Match the python key 'bp_diastolic'
             estimated_glucose: predictions.glucose || 100,
-            confidence_score: predictions.confidence || 0.75,
-            reasoning: predictions.reasoning || "Processed by Azure ML service."
+            confidence_score: azureResponse.confidence || 0.75, // Python function doesn't provide this, so we use a fallback
+            reasoning: azureResponse.reasoning || "Processed by Azure ML service."
         };
     } catch (error: any) {
         clearTimeout(timeoutId);

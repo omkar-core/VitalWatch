@@ -229,20 +229,45 @@ This is NOT a medical diagnostic device. Consult your physician for medical deci
 
 
 // 6. Alerts
-export async function sendCriticalAlert(chatId: string, severity: string, message: string) {
+export async function sendCriticalAlert({
+  chatId,
+  patientName,
+  deviceId,
+  severity,
+  alertMessage,
+  vital,
+}: {
+  chatId: string;
+  patientName: string;
+  deviceId: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  alertMessage: string;
+  vital: HealthVital;
+}) {
   const EMOJI_CRITICAL = "🚨";
   const EMOJI_WARNING = "⚠️";
   const emoji = severity === 'Critical' || severity === 'High' ? EMOJI_CRITICAL : EMOJI_WARNING;
 
   const text = `
-${emoji} *VitalWatch Health Alert* ${emoji}
+${emoji} *VitalWatch Alert* ${emoji}
 
-A new alert has been triggered.
+*Patient:* ${patientName}
+*Device ID:* ${deviceId}
+*Severity:* ${severity.toUpperCase()}
 
-*Severity:* ${severity}
-*Details:* ${message}
+*Alert:* ${alertMessage}
 
-Please log in to the Doctor's Dashboard for a full assessment or verify with a clinical device.
+*Vitals:*
+• Heart Rate: ${vital.heart_rate.toFixed(0)} BPM
+• SpO2: ${vital.spo2.toFixed(1)}%
+
+*AI Predictions:*
+• BP: ${vital.predicted_bp_systolic?.toFixed(0)}/${vital.predicted_bp_diastolic?.toFixed(0)} mmHg
+• Glucose: ${vital.predicted_glucose?.toFixed(0)} mg/dL
+
+*Time:* ${new Date(vital.timestamp).toLocaleString()}
+
+Please log in to the Doctor's Dashboard for a full assessment.
   `;
   return sendTelegramMessage({ chatId, text });
 }

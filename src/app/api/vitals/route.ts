@@ -151,7 +151,6 @@ export async function POST(request: NextRequest) {
             alertRecord.predicted_bp_systolic,
             alertRecord.predicted_bp_diastolic,
             alertRecord.predicted_glucose,
-            alertRecord.confidence_score,
             alertRecord.acknowledged,
             alertRecord.acknowledged_at || null,
             alertRecord.created_at,
@@ -159,7 +158,14 @@ export async function POST(request: NextRequest) {
         await putRows('alert_history', [alertRow]);
         
         if (process.env.TELEGRAM_CHAT_ID) {
-          await sendCriticalAlert(process.env.TELEGRAM_CHAT_ID, alert_severity, `Patient ${patientProfile.name}: ${alert_message}`);
+           await sendCriticalAlert({
+            chatId: process.env.TELEGRAM_CHAT_ID,
+            patientName: patientProfile.name || 'N/A',
+            deviceId: vital.device_id,
+            severity: alert_severity,
+            alertMessage: alert_message,
+            vital: healthVitalRecord,
+          });
         }
       }
     }
@@ -174,7 +180,8 @@ export async function POST(request: NextRequest) {
     console.error('[/api/vitals] Error:', error);
     const chatId = body.chatId || process.env.TELEGRAM_CHAT_ID;
     if (chatId) {
-        await sendCriticalAlert(chatId, 'Critical', 'Failed to process vitals. System error.');
+        // Use a simpler alert for system-level failures
+        await sendTelegramMessage({ chatId, text: `*System Error:* Failed to process vitals. Details: ${error.message}`});
     }
     return NextResponse.json({ error: error.message || 'An internal server error occurred.' }, { status: 500 });
   }
