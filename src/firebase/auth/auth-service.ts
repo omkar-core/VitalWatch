@@ -10,7 +10,7 @@ import { getFirebase } from '..';
 import type { UserRole, PatientProfile } from '@/lib/types';
 
 const firebaseNotConfiguredError = new Error(
-  "Firebase is not configured. Please check your environment variables."
+  "Firebase configuration is invalid. Please check your environment variables."
 );
 
 export async function signUp(
@@ -53,7 +53,7 @@ export async function signUp(
     const now = new Date().toISOString();
     const newProfile: PatientProfile = {
       patient_id: user.uid,
-      device_id: `device_${user.uid.substring(0, 8)}`, // Assign a default device ID
+      device_id: user.uid,
       name: displayName,
       email: email,
       is_active: true,

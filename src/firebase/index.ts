@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { firebaseConfig } from './config';
+import { getFirebaseConfig } from './config';
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -11,20 +11,22 @@ let firestore: Firestore;
 function getFirebase() {
   // Always return null on the server
   if (typeof window === 'undefined') {
-    return { app: null, auth: null, firestore: null } as any;
+    return { app: null, auth: null, firestore: null };
   }
 
+  const config = getFirebaseConfig();
+
   // On the client, check if config is valid
-  if (!firebaseConfig.apiKey) {
+  if (!config) {
     console.error(
-      'Firebase API Key is missing. Please check your NEXT_PUBLIC_FIREBASE_API_KEY environment variable.'
+      'Firebase configuration is invalid. Please check your NEXT_PUBLIC_ environment variables.'
     );
-    return { app: null, auth: null, firestore: null } as any;
+    return { app: null, auth: null, firestore: null };
   }
   
   // Initialize if not already initialized
   if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
+    app = initializeApp(config);
     auth = getAuth(app);
     firestore = getFirestore(app);
   } else {
