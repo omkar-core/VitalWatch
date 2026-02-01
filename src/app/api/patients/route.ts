@@ -51,6 +51,8 @@ export async function POST(request: Request) {
             profile.alert_threshold_spo2_low || null,
             profile.alert_threshold_bp_systolic_high || null,
             profile.alert_threshold_glucose_high || null,
+            profile.alert_threshold_temp_high || null,
+            profile.alert_threshold_temp_low || null,
             profile.emergency_contact_name || null,
             profile.emergency_contact_phone || null,
             profile.created_at,

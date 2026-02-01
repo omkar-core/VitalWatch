@@ -60,19 +60,21 @@ To run the VitalWatch platform locally, follow these steps:
     Create a `.env.local` file in the project root and add your credentials for the various services. Use the `.env` file as a template.
     ```env
     # For Google AI (Gemini) features
-    GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+    GEMINI_API_KEY=AIzaSyDDpXsMv3ftqxUcrwnFSXVOMzdFd5d04-c
 
     # For Telegram alert notifications and bot functionality
-    TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
-    TELEGRAM_CHAT_ID="THE_TARGET_USER_CHAT_ID"
-    
+    TELEGRAM_BOT_TOKEN="8554885311:AAFXuBiNE8vBnBbopB0Y_QTwDg8_5Qcsyj0"
+    TELEGRAM_CHAT_ID="1308906909"
+
     # For GridDB connection
-    GRIDDB_API_URL="https://cloud8737.griddb.com:443/griddb/v2/gs_clustermfcloud8737/dbs/32VcuKfC"
-    GRIDDB_USERNAME="s01QS5qsRB-israel"
-    GRIDDB_PASSWORD="israel"
+    GRIDDB_HOST="cloud8737.griddb.com"
+    GRIDDB_CLUSTER="gs_clustermfcloud8737"
+    GRIDDB_DATABASE="32VcuKfC"
+    GRIDDB_USERNAME="S01QS5qsRB-user1"
+    GRIDDB_PASSWORD="abc@12345"
     GRIDDB_TIMEOUT_MS=5000
     GRIDDB_RETRY_COUNT=3
-    
+
     # The public URL of your deployed application (for webhooks, etc.)
     NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
@@ -92,8 +94,17 @@ To run the VitalWatch platform locally, follow these steps:
     # --- DEVICE & INTERNAL AUTH ---
     # Secret key to authenticate requests from physical devices
     DEVICE_API_KEY="VW_SECURE_2024_XYZ"
+    ALLOWED_DEVICES="VitalWatch_ESP32_001,VitalWatch_ESP32_002"
     # Secret to bypass auth for internal server-to-server API calls
-    INTERNAL_API_SECRET="A_VERY_SECRET_INTERNAL_KEY"
+    INTERNAL_API_SECRET="super_secret_internal_key_for_server_actions"
+
+    # --- DEFAULT ALERT THRESHOLDS ---
+    # These are used if a patient profile does not have specific thresholds set.
+    HR_HIGH=120
+    HR_LOW=50
+    SPO2_LOW=92
+    TEMP_HIGH=38.5
+    TEMP_LOW=35.0
     ```
 
 3.  **Run the Development Server:**

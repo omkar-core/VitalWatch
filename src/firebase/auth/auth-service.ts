@@ -10,7 +10,7 @@ import { getFirebase } from '..';
 import type { UserRole, PatientProfile } from '@/lib/types';
 
 const firebaseNotConfiguredError = new Error(
-  'Firebase is not configured. Please check your firebase/config.ts file.'
+  'Firebase is not configured correctly. Please check your configuration.'
 );
 
 export async function signUp(
@@ -75,6 +75,8 @@ export async function signUp(
       alert_threshold_spo2_low: process.env.SPO2_LOW ? parseInt(process.env.SPO2_LOW) : 92,
       alert_threshold_bp_systolic_high: 140,
       alert_threshold_glucose_high: 180,
+      alert_threshold_temp_high: process.env.TEMP_HIGH ? parseFloat(process.env.TEMP_HIGH) : 38.5,
+      alert_threshold_temp_low: process.env.TEMP_LOW ? parseFloat(process.env.TEMP_LOW) : 35.0,
       emergency_contact_name: undefined,
       emergency_contact_phone: undefined,
     };

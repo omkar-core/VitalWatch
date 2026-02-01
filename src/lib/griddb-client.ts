@@ -1,5 +1,7 @@
 
-const GRIDDB_API_URL = process.env.GRIDDB_API_URL;
+const GRIDDB_HOST = process.env.GRIDDB_HOST;
+const GRIDDB_CLUSTER = process.env.GRIDDB_CLUSTER;
+const GRIDDB_DATABASE = process.env.GRIDDB_DATABASE;
 const GRIDDB_USERNAME = process.env.GRIDDB_USERNAME;
 const GRIDDB_PASSWORD = process.env.GRIDDB_PASSWORD;
 const GRIDDB_TIMEOUT_MS = parseInt(process.env.GRIDDB_TIMEOUT_MS || '5000');
@@ -7,13 +9,15 @@ const GRIDDB_RETRY_COUNT = parseInt(process.env.GRIDDB_RETRY_COUNT || '3');
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const BASE_URL = `https://${GRIDDB_HOST}/griddb/v2/${GRIDDB_CLUSTER}/dbs/${GRIDDB_DATABASE}`;
+
 async function griddbFetch(endpoint: string, options: RequestInit) {
-  if (!GRIDDB_API_URL || !GRIDDB_USERNAME || !GRIDDB_PASSWORD) {
-    throw new Error("GridDB connection details are not configured in environment variables.");
+  if (!GRIDDB_HOST || !GRIDDB_CLUSTER || !GRIDDB_DATABASE || !GRIDDB_USERNAME || !GRIDDB_PASSWORD) {
+    throw new Error("GridDB connection details are not fully configured in environment variables.");
   }
 
   const authHeader = `Basic ${Buffer.from(`${GRIDDB_USERNAME}:${GRIDDB_PASSWORD}`).toString('base64')}`;
-  const url = `${GRIDDB_API_URL}/${endpoint}`;
+  const url = `${BASE_URL}/${endpoint}`;
   
   let lastError: Error | null = null;
 
@@ -46,13 +50,12 @@ async function griddbFetch(endpoint: string, options: RequestInit) {
         continue;
       }
 
-      // Handle cases where GridDB returns an empty success response
       const textBody = await response.text();
       try {
         return JSON.parse(textBody);
       } catch (e) {
-        if (textBody === '') return {}; // Return empty object for empty success responses
-        return textBody; // Return text if not valid JSON but not empty
+        if (textBody === '') return {};
+        return textBody;
       }
     } catch (error: any) {
         clearTimeout(timeoutId);
@@ -81,11 +84,9 @@ export async function createTable(tableName: string, columns: any[]) {
         });
         console.log(`Table '${tableName}' created successfully.`);
     } catch (error: any) {
-        // GridDB might error if the table already exists, which is fine.
         if (error.message.includes("409")) { // 409 Conflict
             console.log(`Table '${tableName}' already exists.`);
         } else {
-            // Re-throw other errors
             throw error;
         }
     }
@@ -100,7 +101,8 @@ export async function putRows(tableName: string, rows: any[]) {
 }
 
 export async function getRows(tableName: string, query: string) {
-    const response = await griddbFetch(`tql?query=select * from ${tableName} where ${query}`, {
+    const fullQuery = `select * from ${tableName} where ${query}`;
+    const response = await griddbFetch(`tql?query=${encodeURIComponent(fullQuery)}`, {
         method: 'GET'
     });
     return response;

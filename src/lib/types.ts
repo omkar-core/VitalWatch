@@ -33,6 +33,8 @@ export interface PatientProfile {
     alert_threshold_spo2_low?: number;
     alert_threshold_bp_systolic_high?: number;
     alert_threshold_glucose_high?: number;
+    alert_threshold_temp_high?: number;
+    alert_threshold_temp_low?: number;
     emergency_contact_name?: string;
     emergency_contact_phone?: string;
     created_at: string;

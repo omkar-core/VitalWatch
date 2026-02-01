@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "patient_profile": {
@@ -25,6 +26,8 @@
         "alert_threshold_spo2_low": { "type": "number" },
         "alert_threshold_bp_systolic_high": { "type": "number" },
         "alert_threshold_glucose_high": { "type": "number" },
+        "alert_threshold_temp_high": { "type": "number" },
+        "alert_threshold_temp_low": { "type": "number" },
         "emergency_contact_name": { "type": "string" },
         "emergency_contact_phone": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" },
