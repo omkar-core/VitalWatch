@@ -23,7 +23,7 @@ The platform is divided into four main sections, each tailored to a specific use
 #### 🧑‍🦱 Patient Portal
 - **Personal Dashboard:** A simplified, easy-to-understand view of current health status, active alerts, and medication reminders.
 - **Health Data Tracking:** Interactive charts to explore historical glucose, blood pressure, and other vital trends.
-- **Appointments & Communication:** A hub to manage appointments and receive advice from the care team.
+- **Appointments & Communication:** A hub to manage appointments and receive advice from your care team.
 
 #### 👨‍💼 Admin Portal
 - **System Overview:** Key metrics for the entire platform, including user counts, device status, and system health.
@@ -67,9 +67,9 @@ To run the VitalWatch platform locally, follow these steps:
     TELEGRAM_CHAT_ID=<YOUR_TELEGRAM_CHAT_ID>
 
     # For GridDB connection
-    GRIDDB_HOST="cloud8737.griddb.com"
-    GRIDDB_CLUSTER="gs_clustermfcloud8737"
-    GRIDDB_DATABASE="32VcuKfC"
+    GRIDDB_HOST="<YOUR_GRIDDB_HOST>"
+    GRIDDB_CLUSTER="<YOUR_GRIDDB_CLUSTER>"
+    GRIDDB_DATABASE="<YOUR_GRIDDB_DATABASE>"
     GRIDDB_USERNAME="<YOUR_GRIDDB_USERNAME>"
     GRIDDB_PASSWORD="<YOUR_GRIDDB_PASSWORD>"
     GRIDDB_TIMEOUT_MS=5000
@@ -80,7 +80,7 @@ To run the VitalWatch platform locally, follow these steps:
 
     # --- DUAL ARCHITECTURE ---
     # For Azure Function (Secondary AI Backend)
-    AZURE_FUNCTION_BASE_URL="https://predict01-g4ecdyayb9czgtft.centralindia-01.azurewebsites.net"
+    AZURE_FUNCTION_BASE_URL="<YOUR_AZURE_FUNCTION_URL>"
     AZURE_FUNCTION_PREDICT_PATH="/api/predict"
     AZURE_FUNCTION_KEY="<YOUR_AZURE_FUNCTION_KEY>"
     AZURE_FUNCTION_TIMEOUT_MS=8000
@@ -94,7 +94,7 @@ To run the VitalWatch platform locally, follow these steps:
     # --- DEVICE & INTERNAL AUTH ---
     # Secret key to authenticate requests from physical devices
     DEVICE_API_KEY="<YOUR_DEVICE_API_KEY>"
-    ALLOWED_DEVICES="VitalWatch_ESP32_001,VitalWatch_ESP32_002"
+    ALLOWED_DEVICES="<YOUR_ALLOWED_DEVICES_LIST>"
     # Secret to bypass auth for internal server-to-server API calls
     INTERNAL_API_SECRET="<YOUR_INTERNAL_API_SECRET>"
 
