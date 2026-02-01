@@ -1,26 +1,19 @@
-
 import type { FirebaseOptions } from 'firebase/app';
 
-/**
- * Creates and returns the Firebase configuration object from environment variables.
- * This function ensures that process.env is accessed just-in-time.
- * @returns {FirebaseOptions | null} The Firebase config object or null if essential variables are missing.
- */
-export const getFirebaseConfig = (): FirebaseOptions | null => {
-    const firebaseConfig: FirebaseOptions = {
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-        measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-    };
-
-    // A check to ensure that the config is valid.
-    if (!firebaseConfig.apiKey) {
-        return null;
-    }
-
-    return firebaseConfig;
+// Your web app's Firebase configuration
+// This is a public configuration and is safe to be exposed on the client-side.
+// Security is enforced by Firebase Security Rules.
+export const firebaseConfig: FirebaseOptions = {
+  apiKey: "AIzaSyAvkrFL1vus49_RrLf7pTO2NrR6AkCpvx8",
+  authDomain: "any2pdf-c1eb3.firebaseapp.com",
+  projectId: "any2pdf-c1eb3",
+  storageBucket: "any2pdf-c1eb3.appspot.com",
+  messagingSenderId: "989655899263",
+  appId: "1:989655899263:web:da3376aed2eac83ec0b34a",
+  measurementId: "G-L7CYMRDNXR"
 };
+
+// A check to ensure that the config is valid.
+export const isFirebaseConfigValid = (): boolean => {
+    return !!firebaseConfig.apiKey;
+}

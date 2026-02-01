@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getFirebaseConfig } from './config';
+import { firebaseConfig, isFirebaseConfigValid } from './config';
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -14,19 +14,17 @@ function getFirebase() {
     return { app: null, auth: null, firestore: null };
   }
 
-  const config = getFirebaseConfig();
-
   // On the client, check if config is valid
-  if (!config) {
+  if (!isFirebaseConfigValid()) {
     console.error(
-      'Firebase configuration is invalid. Please check your NEXT_PUBLIC_ environment variables.'
+      'Firebase configuration is invalid. Please check your firebase/config.ts file.'
     );
     return { app: null, auth: null, firestore: null };
   }
   
   // Initialize if not already initialized
   if (!getApps().length) {
-    app = initializeApp(config);
+    app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     firestore = getFirestore(app);
   } else {

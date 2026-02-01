@@ -10,7 +10,7 @@ import { getFirebase } from '..';
 import type { UserRole, PatientProfile } from '@/lib/types';
 
 const firebaseNotConfiguredError = new Error(
-  "Firebase configuration is invalid. Please check your environment variables."
+  "Firebase initialization failed. The application cannot connect to Firebase services."
 );
 
 export async function signUp(
@@ -53,30 +53,30 @@ export async function signUp(
     const now = new Date().toISOString();
     const newProfile: PatientProfile = {
       patient_id: user.uid,
-      device_id: user.uid,
+      device_id: user.uid, // Default device_id to user_id for the demo
       name: displayName,
       email: email,
       is_active: true,
       created_at: now,
       updated_at: now,
-      age: 0,
+      age: undefined,
       gender: 'Other',
-      phone: '',
+      phone: undefined,
       avatar_url: avatar_url,
-      baseline_hr: 0,
-      baseline_spo2: 0,
-      baseline_bp_systolic: 0,
-      baseline_bp_diastolic: 0,
+      baseline_hr: undefined,
+      baseline_spo2: undefined,
+      baseline_bp_systolic: undefined,
+      baseline_bp_diastolic: undefined,
       has_diabetes: false,
       has_hypertension: false,
       has_heart_condition: false,
-      alert_threshold_hr_high: parseInt(process.env.HR_HIGH || '120'),
-      alert_threshold_hr_low: parseInt(process.env.HR_LOW || '50'),
-      alert_threshold_spo2_low: parseInt(process.env.SPO2_LOW || '92'),
+      alert_threshold_hr_high: process.env.HR_HIGH ? parseInt(process.env.HR_HIGH) : 120,
+      alert_threshold_hr_low: process.env.HR_LOW ? parseInt(process.env.HR_LOW) : 50,
+      alert_threshold_spo2_low: process.env.SPO2_LOW ? parseInt(process.env.SPO2_LOW) : 92,
       alert_threshold_bp_systolic_high: 140,
       alert_threshold_glucose_high: 180,
-      emergency_contact_name: '',
-      emergency_contact_phone: '',
+      emergency_contact_name: undefined,
+      emergency_contact_phone: undefined,
     };
 
     // Fire-and-forget the profile creation to make the UI faster.
