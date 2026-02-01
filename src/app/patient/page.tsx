@@ -97,7 +97,6 @@ export default function PatientPage() {
     toast({
         title: 'Scan Requested...',
         description: `Waiting for device to respond. This may take a moment.`,
-        icon: <Hourglass className="h-6 w-6 text-primary"/>
     });
 
     const scanDocRef = doc(firestore, 'scan_requests', user.uid);
@@ -152,7 +151,6 @@ export default function PatientPage() {
         toast({
             title: 'Scan Complete!',
             description: `Your latest vitals have been recorded and analyzed.`,
-            icon: <CheckCircle className="h-6 w-6 text-green-500"/>
         });
         await setDoc(scanDocRef, { status: 'idle', completedAt: serverTimestamp() }, { merge: true });
     }
