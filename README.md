@@ -10,22 +10,22 @@ This project was built as a demonstration of a scalable, robust, and modern heal
 
 The platform is divided into four main sections, each tailored to a specific user group:
 
-#### 🏠 Public-Facing Site
+### 🏠 Public-Facing Site
 - **Landing Page:** Engaging introduction to the platform's mission and capabilities.
 - **Detailed Feature & Tech Pages:** In-depth information on features, technology, and a step-by-step "How It Works" guide.
 - **Role-Based Registration & Login:** Secure signup and login flows for doctors, patients, and clinic admins.
 
-#### 🧑‍⚕️ Doctor Portal
+### 🧑‍⚕️ Doctor Portal
 - **Clinical Dashboard:** A high-level overview of patient statistics, critical alerts, and recent activity.
 - **Patient Management:** A searchable and filterable list of all assigned patients, with access to detailed health records.
 - **Real-Time Alerts:** An intelligent notification center that prioritizes critical and predictive alerts for timely intervention.
 
-#### 🧑‍🦱 Patient Portal
+### 🧑‍🦱 Patient Portal
 - **Personal Dashboard:** A simplified, easy-to-understand view of current health status, active alerts, and medication reminders.
 - **Health Data Tracking:** Interactive charts to explore historical glucose, blood pressure, and other vital trends.
 - **Appointments & Communication:** A hub to manage appointments and receive advice from your care team.
 
-#### 👨‍💼 Admin Portal
+### 👨‍💼 Admin Portal
 - **System Overview:** Key metrics for the entire platform, including user counts, device status, and system health.
 - **User & Device Management:** Tools to enroll new users (doctors, patients) and manage the lifecycle of monitoring devices.
 
@@ -38,8 +38,8 @@ VitalWatch is built with a modern, scalable, and secure technology stack:
 - **Frontend:** [Next.js](https://nextjs.org/) with React (App Router) & [TypeScript](https://www.typescriptlang.org/)
 - **UI:** [Tailwind CSS](https://tailwindcss.com/) & [ShadCN UI](https://ui.shadcn.com/)
 - **Generative AI:**
-    - **Primary:** [Google Gemini](https://deepmind.google.com/technologies/gemini/) via [Genkit](https://firebase.google.com/docs/genkit).
-    - **Secondary/Failover:** Custom ML Models hosted on [Azure Functions](https://azure.microsoft.com/en-us/products/functions).
+    - **Primary:** [Google Gemini](https://deepmind.google.com/technologies/gemini/) via [Genkit](https://firebase.google.com/docs/genkit)
+    - **Secondary/Failover:** Custom ML Models hosted on [Azure Functions](https://azure.microsoft.com/en-us/products/functions)
 - **Database:** [GridDB](https://griddb.net/en/) via REST API
 - **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth)
 - **Deployment:** [Vercel](https://vercel.com/)
@@ -50,84 +50,207 @@ VitalWatch is built with a modern, scalable, and secure technology stack:
 
 To run the VitalWatch platform locally, follow these steps:
 
-1.  **Install Dependencies:**
-    Make sure you have Node.js and npm installed. Then, run the following command in the project root:
-    ```bash
-    npm install
-    ```
+### 1. Install Dependencies
 
-2.  **Set Up Environment Variables:**
-    Create a `.env.local` file in the project root and add your credentials for the various services. Use the `.env` file as a template.
-    ```env
-    # For Google AI (Gemini) features
-    GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
+Make sure you have Node.js (v18 or higher) and npm installed. Then, run the following command in the project root:
 
-    # For Telegram alert notifications and bot functionality
-    TELEGRAM_BOT_TOKEN=<YOUR_TELEGRAM_BOT_TOKEN>
-    TELEGRAM_CHAT_ID=<YOUR_TELEGRAM_CHAT_ID>
+```bash
+npm install
+```
 
-    # For GridDB connection
-    GRIDDB_HOST="<YOUR_GRIDDB_HOST>"
-    GRIDDB_CLUSTER="<YOUR_GRIDDB_CLUSTER>"
-    GRIDDB_DATABASE="<YOUR_GRIDDB_DATABASE>"
-    GRIDDB_USERNAME="<YOUR_GRIDDB_USERNAME>"
-    GRIDDB_PASSWORD="<YOUR_GRIDDB_PASSWORD>"
-    GRIDDB_TIMEOUT_MS=5000
-    GRIDDB_RETRY_COUNT=3
+### 2. Set Up Environment Variables
 
-    # The public URL of your deployed application (for webhooks, etc.)
-    NEXT_PUBLIC_APP_URL="http://localhost:3000"
+Create a `.env.local` file in the project root and add your credentials for the various services. **Never commit this file to version control.**
 
-    # --- DUAL ARCHITECTURE ---
-    # For Azure Function (Secondary AI Backend)
-    AZURE_FUNCTION_BASE_URL="<YOUR_AZURE_FUNCTION_URL>"
-    AZURE_FUNCTION_PREDICT_PATH="/api/predict"
-    AZURE_FUNCTION_KEY="<YOUR_AZURE_FUNCTION_KEY>"
-    AZURE_FUNCTION_TIMEOUT_MS=8000
+```env
+# ===================================
+# Google AI (Gemini) Configuration
+# ===================================
+GEMINI_API_KEY=your_gemini_api_key_here
 
-    # Backend Control Flags
-    PRIMARY_BACKEND="NON_AZURE" # Can be "NON_AZURE" or "AZURE"
-    ENABLE_AZURE_BACKEND=true
-    ENABLE_NON_AZURE_BACKEND=true
-    BACKEND_FAILOVER_ENABLED=true
+# ===================================
+# Telegram Bot Configuration
+# ===================================
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here
 
-    # --- DEVICE & INTERNAL AUTH ---
-    # Secret key to authenticate requests from physical devices
-    DEVICE_API_KEY="<YOUR_DEVICE_API_KEY>"
-    ALLOWED_DEVICES="<YOUR_ALLOWED_DEVICES_LIST>"
-    # Secret to bypass auth for internal server-to-server API calls
-    INTERNAL_API_SECRET="<YOUR_INTERNAL_API_SECRET>"
+# ===================================
+# GridDB Configuration
+# ===================================
+GRIDDB_HOST=your_griddb_host_here
+GRIDDB_CLUSTER=your_griddb_cluster_name_here
+GRIDDB_DATABASE=your_griddb_database_name_here
+GRIDDB_USERNAME=your_griddb_username_here
+GRIDDB_PASSWORD=your_griddb_password_here
+GRIDDB_TIMEOUT_MS=5000
+GRIDDB_RETRY_COUNT=3
 
-    # --- DEFAULT ALERT THRESHOLDS ---
-    # These are used if a patient profile does not have specific thresholds set.
-    HR_HIGH=120
-    HR_LOW=50
-    SPO2_LOW=92
-    TEMP_HIGH=38.5
-    TEMP_LOW=35.0
-    ```
+# ===================================
+# Application URL
+# ===================================
+# The public URL of your deployed application (for webhooks, etc.)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-3.  **Run the Development Server:**
-    Start the Next.js development server:
-    ```bash
-    npm run dev
-    ```
+# ===================================
+# Azure Functions Configuration
+# ===================================
+# Secondary AI Backend for failover
+AZURE_FUNCTION_BASE_URL=your_azure_function_url_here
+AZURE_FUNCTION_PREDICT_PATH=/api/predict
+AZURE_FUNCTION_KEY=your_azure_function_key_here
+AZURE_FUNCTION_TIMEOUT_MS=8000
 
-4.  **Set up the Telegram Webhook (Important for Bot Functionality):**
-    For the Telegram bot to work, you need to tell Telegram where to send updates. Run the following command in your terminal, replacing `<YOUR_BOT_TOKEN>` and `<YOUR_VERCEL_URL>` with your actual bot token and your deployed Vercel URL (or a service like ngrok for local development).
-    ```bash
-    curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_VERCEL_URL>/api/telegram/webhook"
-    ```
+# ===================================
+# Backend Control Flags
+# ===================================
+PRIMARY_BACKEND=NON_AZURE
+# Options: "NON_AZURE" or "AZURE"
+ENABLE_AZURE_BACKEND=true
+ENABLE_NON_AZURE_BACKEND=true
+BACKEND_FAILOVER_ENABLED=true
 
-5.  **Access the Application:**
-    Open your browser and navigate to `http://localhost:3000` to see the application in action.
+# ===================================
+# Device & Internal Authentication
+# ===================================
+# Secret key to authenticate requests from physical devices
+DEVICE_API_KEY=your_secure_device_api_key_here
+ALLOWED_DEVICES=device1,device2,device3
+# Secret to bypass auth for internal server-to-server API calls
+INTERNAL_API_SECRET=your_internal_api_secret_here
+
+# ===================================
+# Default Alert Thresholds
+# ===================================
+# Used when patient profile doesn't have specific thresholds
+HR_HIGH=120
+HR_LOW=50
+SPO2_LOW=92
+TEMP_HIGH=38.5
+TEMP_LOW=35.0
+```
+
+> **⚠️ Security Notice:** Replace all placeholder values with your actual credentials. Keep the `.env.local` file secure and never commit it to version control. Add `.env.local` to your `.gitignore` file.
+
+### 3. Run the Development Server
+
+Start the Next.js development server:
+
+```bash
+npm run dev
+```
+
+### 4. Set Up the Telegram Webhook
+
+For the Telegram bot to receive messages and commands, you need to configure the webhook. Replace the placeholders with your actual values:
+
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_DEPLOYED_URL>/api/telegram/webhook"
+```
+
+**For local development with ngrok:**
+
+```bash
+# Start ngrok
+ngrok http 3000
+
+# Use the ngrok URL in the webhook command
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_NGROK_URL>/api/telegram/webhook"
+```
+
+### 5. Access the Application
+
+Open your browser and navigate to:
+
+```
+http://localhost:3000
+```
 
 ---
 
 ## 📜 Available Scripts
 
-- `npm run dev`: Starts the Next.js development server.
-- `npm run build`: Creates a production-ready build of the application.
-- `npm run start`: Starts the production server.
-- `npm run lint`: Lints the codebase for errors and style issues.
-- `npm run genkit:dev`: Starts the Genkit development server for AI flow testing.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Starts the Next.js development server with hot reload |
+| `npm run build` | Creates an optimized production build |
+| `npm run start` | Starts the production server |
+| `npm run lint` | Lints the codebase for errors and style issues |
+| `npm run genkit:dev` | Starts the Genkit development server for AI flow testing |
+
+---
+
+## 🔐 Security Best Practices
+
+1. **Environment Variables:**
+   - Never commit `.env.local` or any file containing secrets to version control
+   - Use different credentials for development and production environments
+   - Rotate API keys and secrets regularly
+
+2. **API Keys:**
+   - Store all sensitive keys in environment variables
+   - Use Azure Key Vault or similar services for production secrets
+   - Implement rate limiting on public API endpoints
+
+3. **Device Authentication:**
+   - Use strong, randomly generated API keys for device authentication
+   - Implement device registration and revocation mechanisms
+   - Monitor device activity for suspicious patterns
+
+---
+
+## 🏗️ Project Structure
+
+```
+VitalWatch/
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Authentication pages
+│   ├── admin/             # Admin portal
+│   ├── doctor/            # Doctor portal
+│   ├── patient/           # Patient portal
+│   └── api/               # API routes
+├── components/            # Reusable React components
+├── lib/                   # Utility functions and configurations
+├── public/                # Static assets
+├── genkit/                # Genkit AI flows
+└── types/                 # TypeScript type definitions
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 📞 Support
+
+For questions or support, please:
+- Open an issue on GitHub
+- Contact the development team
+- Check the documentation at [your-docs-url]
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- UI powered by [ShadCN UI](https://ui.shadcn.com/)
+- AI capabilities by [Google Gemini](https://deepmind.google.com/technologies/gemini/)
+- Time-series data managed by [GridDB](https://griddb.net/en/)
+
+---
+
+**Made with ❤️ for better healthcare monitoring**
