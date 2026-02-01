@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
-import { HeartPulse, Droplets, Wind, Wifi, Bot, Loader2, Info, Activity, BarChartHorizontal, Waves, Thermometer } from "lucide-react";
+import { HeartPulse, Droplets, Wind, Wifi, Bot, Loader2, Info, Activity, BarChartHorizontal, Waves, Thermometer, CheckCircle, Hourglass } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { ingestVitalsAction } from '@/app/actions';
 import type { HealthVital, PatientProfile } from "@/lib/types";
@@ -14,6 +14,8 @@ import useSWR from 'swr';
 import { VitalsChart } from '@/components/dashboard/vitals-chart';
 import { WaveformChart } from '@/components/dashboard/waveform-chart';
 import { format } from 'date-fns';
+import { useFirestore } from '@/firebase';
+import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
 // Helper function to get status colors
 const getStatusColor = (status: string) => {
@@ -46,8 +48,9 @@ const fetcher = (url: string) => fetch(url).then(res => {
 
 export default function PatientPage() {
   const { toast } = useToast();
-  const [isSyncing, setIsSyncing] = React.useState(false);
   const { user } = useUser();
+  const firestore = useFirestore();
+  const [scanStatus, setScanStatus] = React.useState<'idle' | 'pending' | 'processing'>('idle');
 
   const swrOptions = {
     refreshInterval: 5000, // Poll every 5 seconds
@@ -55,17 +58,27 @@ export default function PatientPage() {
     errorRetryCount: 5,
   };
 
-  const { data: patientData, isLoading: patientLoading } = useSWR<PatientProfile>(user ? `/api/patients/${user.uid}` : null, fetcher, { ...swrOptions, refreshInterval: 60000 }); // Refresh patient profile less often
+  const { data: patientData, isLoading: patientLoading } = useSWR<PatientProfile>(user ? `/api/patients/${user.uid}` : null, fetcher, { ...swrOptions, refreshInterval: 60000 });
   
-  // SWR for the full history, for the trend chart
   const { data: vitalsHistory, isLoading: historyLoading } = useSWR<HealthVital[]>(patientData?.device_id ? `/api/vitals/history/${patientData.device_id}` : null, fetcher, swrOptions);
 
   const patient: PatientProfile | null = patientData || null;
-
-  // Derive latest vital from history to ensure consistency
   const latestVital: HealthVital | null = vitalsHistory && vitalsHistory.length > 0 ? vitalsHistory[vitalsHistory.length - 1] : null;
 
-  // Prepare data for the trend chart (last 20 readings)
+  // Listen to scan request status from Firestore
+   React.useEffect(() => {
+    if (!firestore || !user) return;
+    const scanDocRef = doc(firestore, 'scan_requests', user.uid);
+    const unsubscribe = onSnapshot(scanDocRef, (doc) => {
+      const data = doc.data();
+      if (data?.status) {
+        setScanStatus(data.status);
+      }
+    });
+    return () => unsubscribe();
+  }, [firestore, user]);
+
+
   const chartData = React.useMemo(() => 
     vitalsHistory
         ?.slice(-20)
@@ -76,17 +89,43 @@ export default function PatientPage() {
     [vitalsHistory]
   );
 
-  const handleDeviceSync = async () => {
-    if (isSyncing || !patient?.device_id) return;
+  const handleRequestScan = async () => {
+    if (scanStatus !== 'idle' || !patient?.device_id || !firestore || !user) return;
     
-    setIsSyncing(true);
+    setScanStatus('pending');
     toast({
-        title: 'Initiating Scan...',
-        description: `Requesting a new reading from your device.`,
+        title: 'Scan Requested...',
+        description: `Waiting for device to respond. This may take a moment.`,
+        icon: <Hourglass className="h-6 w-6 text-primary"/>
     });
 
+    const scanDocRef = doc(firestore, 'scan_requests', user.uid);
+    await setDoc(scanDocRef, {
+      status: 'pending',
+      requestedAt: serverTimestamp()
+    });
+
+    // --- REAL-WORLD vs SIMULATION ---
+    // In a real system, the ESP32 device would be polling the `scan_requests` collection.
+    // It would see the 'pending' status, start a scan, upload the data via `/api/vitals`,
+    // and then update the Firestore doc to 'completed'.
+    //
+    // For this demo, we simulate this device behavior with a delay.
+    setTimeout(() => {
+      simulateDeviceResponse(patient.device_id);
+    }, 5000); // 5-second delay to simulate polling and scanning
+  };
+
+  const simulateDeviceResponse = async (deviceId: string) => {
+    if (!user || !firestore) return;
+
+    setScanStatus('processing');
+    const scanDocRef = doc(firestore, 'scan_requests', user.uid);
+    await setDoc(scanDocRef, { status: 'processing' }, { merge: true });
+
+    // 1. Simulate generating data
     const mockESP32Data = [{
-      device_id: patient.device_id,
+      device_id: deviceId,
       timestamp: new Date().toISOString(),
       heart_rate: 70 + Math.random() * 15,
       spo2: 96 + Math.random() * 3,
@@ -94,23 +133,27 @@ export default function PatientPage() {
       ppg_raw: 1000 + Math.random() * 200,
     }];
     
+    // 2. Simulate uploading data
     const result = await ingestVitalsAction(mockESP32Data);
 
+    // 3. Simulate updating status on completion
     if (result.error) {
        toast({
             variant: 'destructive',
             title: 'Scan Failed!',
             description: result.error,
         });
+        await setDoc(scanDocRef, { status: 'idle' }, { merge: true });
     } else {
         toast({
             title: 'Scan Complete!',
             description: `Your latest vitals have been recorded and analyzed.`,
+            icon: <CheckCircle className="h-6 w-6 text-green-500"/>
         });
+        await setDoc(scanDocRef, { status: 'idle', completedAt: serverTimestamp() }, { merge: true });
     }
-    
-    setIsSyncing(false);
-  };
+  }
+
 
   const bp = latestVital ? {
       systolic: latestVital.predicted_bp_systolic || 0,
@@ -125,16 +168,29 @@ export default function PatientPage() {
   
   const isLoading = patientLoading || (patientData && historyLoading);
 
+  const getScanButtonContent = () => {
+    switch (scanStatus) {
+      case 'pending':
+        return { icon: <Loader2 className="h-6 w-6 animate-spin" />, title: 'Waiting for Device', description: 'Scan request sent...' };
+      case 'processing':
+        return { icon: <Loader2 className="h-6 w-6 animate-spin" />, title: 'Scanning in Progress', description: 'Measuring your vitals...' };
+      case 'idle':
+      default:
+        return { icon: <Wifi className="h-6 w-6" />, title: 'Scan Vitals Now', description: 'Tap to get a new reading' };
+    }
+  }
+  const scanButtonContent = getScanButtonContent();
+
   return (
     <div className="p-4 space-y-4">
-        <Card onClick={handleDeviceSync} className="bg-primary text-primary-foreground border-0 cursor-pointer hover:bg-primary/90 transition-all active:scale-[0.98] hover:shadow-lg">
+        <Card onClick={handleRequestScan} className={cn("bg-primary text-primary-foreground border-0 transition-all", scanStatus !== 'idle' ? 'cursor-not-allowed bg-primary/80' : 'cursor-pointer hover:bg-primary/90 active:scale-[0.98] hover:shadow-lg')}>
             <CardContent className="p-4 flex items-center gap-4">
                 <div className="p-3 bg-primary-foreground/20 rounded-lg">
-                    {isSyncing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Wifi className="h-6 w-6" />}
+                    {scanButtonContent.icon}
                 </div>
                 <div>
-                    <h2 className="font-bold text-lg font-headline">Scan Vitals Now</h2>
-                    <p className="text-sm opacity-80">{isSyncing ? 'Scanning...' : 'Tap to get a new reading'}</p>
+                    <h2 className="font-bold text-lg font-headline">{scanButtonContent.title}</h2>
+                    <p className="text-sm opacity-80">{scanButtonContent.description}</p>
                 </div>
             </CardContent>
         </Card>

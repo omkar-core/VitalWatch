@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isValidUserRole(role) {
+        return role is string && role in ['doctor', 'patient'];
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users:
+    // - Anyone can create their own user document (for signup).
+    // - Users can read/update their own document.
+    match /users/{userId} {
+      allow create: if request.auth != null 
+                    && isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && isValidUserRole(request.resource.data.role)
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.display_name is string;
+      allow read, update: if isOwner(userId);
+    }
+
+    // Scan Requests:
+    // - A patient can request a scan for their own device.
+    // - A (simulated) device would need to read this, but for now we only need client write access.
+    match /scan_requests/{userId} {
+        allow read, write: if isOwner(userId);
+    }
+
+
+    // All medical data (patient profiles, vitals, alerts) are stored in GridDB
+    // and are governed by API-level permissions, not Firestore rules.
+  }
+}
