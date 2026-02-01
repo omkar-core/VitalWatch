@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { HealthVital, PatientProfile, AlertHistory, ESP32Data } from '@/lib/types';
@@ -12,7 +13,7 @@ type ActionResult<T> = {
 }
 
 // This is the action called by the patient dashboard "Scan Vitals" button
-export async function ingestVitalsAction(vitals: ESP32Data[]): Promise<ActionResult<string>> {
+export async function ingestVitalsAction(vitals: ESP32Data[]): Promise<ActionResult<{ message: string, vital: HealthVital | null }>> {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/vitals`, {
       method: 'POST',
@@ -32,7 +33,7 @@ export async function ingestVitalsAction(vitals: ESP32Data[]): Promise<ActionRes
     }
 
     const result = await response.json();
-    return { data: result.message };
+    return { data: result };
 
   } catch (e: any) {
     console.error("Error in ingestVitalsAction:", e);

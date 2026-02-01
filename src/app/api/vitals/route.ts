@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       await sendHealthReport(chatId, reportVitals);
     }
 
-    return NextResponse.json({ message: 'Vitals ingested, analyzed, and stored successfully.' });
+    return NextResponse.json({ message: 'Vitals ingested, analyzed, and stored successfully.', vital: finalHealthVital });
 
   } catch (error: any) {
     console.error('[/api/vitals] Error:', error);

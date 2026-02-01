@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -58,9 +59,9 @@ export default function PatientPage() {
     errorRetryCount: 5,
   };
 
-  const { data: patientData, isLoading: patientLoading } = useSWR<PatientProfile>(user ? `/api/patients/${user.uid}` : null, fetcher, { ...swrOptions, refreshInterval: 60000 });
+  const { data: patientData, isLoading: patientLoading } = useSWR<PatientProfile | null>(user ? `/api/patients/${user.uid}` : null, fetcher, { ...swrOptions, refreshInterval: 60000 });
   
-  const { data: vitalsHistory, isLoading: historyLoading } = useSWR<HealthVital[]>(patientData?.device_id ? `/api/vitals/history/${patientData.device_id}` : null, fetcher, swrOptions);
+  const { data: vitalsHistory, isLoading: historyLoading, mutate: mutateHistory } = useSWR<HealthVital[] | null>(patientData?.device_id ? `/api/vitals/history/${patientData.device_id}` : null, fetcher, swrOptions);
 
   const patient: PatientProfile | null = patientData || null;
   const latestVital: HealthVital | null = vitalsHistory && vitalsHistory.length > 0 ? vitalsHistory[vitalsHistory.length - 1] : null;
@@ -137,14 +138,17 @@ export default function PatientPage() {
     const result = await ingestVitalsAction(mockESP32Data);
 
     // 3. Simulate updating status on completion
-    if (result.error) {
+    if (result.error || !result.data?.vital) {
        toast({
             variant: 'destructive',
             title: 'Scan Failed!',
-            description: result.error,
+            description: result.error || "Did not receive new vital data from server.",
         });
         await setDoc(scanDocRef, { status: 'idle' }, { merge: true });
     } else {
+        // Optimistically update the local data immediately
+        mutateHistory([...(vitalsHistory || []), result.data.vital], { revalidate: false });
+
         toast({
             title: 'Scan Complete!',
             description: `Your latest vitals have been recorded and analyzed.`,
