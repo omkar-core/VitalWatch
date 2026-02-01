@@ -43,7 +43,6 @@ export interface PatientProfile {
 export interface HealthVital {
     timestamp: string;
     device_id: string;
-    patient_id?: string;
     heart_rate: number;
     spo2: number;
     temperature: number;

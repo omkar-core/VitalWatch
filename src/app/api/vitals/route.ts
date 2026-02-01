@@ -135,7 +135,6 @@ export async function POST(request: NextRequest) {
       const healthVitalRecord: HealthVital = {
         timestamp: vital.timestamp,
         device_id: vital.device_id,
-        patient_id: patientProfile.patient_id,
         heart_rate: vital.heart_rate,
         spo2: vital.spo2,
         temperature: vital.temperature,
@@ -160,8 +159,7 @@ export async function POST(request: NextRequest) {
           healthVitalRecord.predicted_glucose,
           healthVitalRecord.alert_flag,
           healthVitalRecord.created_at,
-          healthVitalRecord.confidence_score,
-          healthVitalRecord.patient_id
+          healthVitalRecord.confidence_score
       ];
 
       // 6. Save vitals to GridDB
@@ -222,7 +220,15 @@ export async function POST(request: NextRequest) {
 
     // 8. If the request came from Telegram, send the full report back to the patient
     if (chatId && finalHealthVital) {
-      await sendHealthReport(chatId, finalHealthVital);
+      const patientProfileForReport = { name: 'Patient' }; // Placeholder as we don't have the full profile here
+      const reportVitals = {
+          ...finalHealthVital,
+          predicted_bp_systolic: finalHealthVital.predicted_bp_systolic || 0,
+          predicted_bp_diastolic: finalHealthVital.predicted_bp_diastolic || 0,
+          predicted_glucose: finalHealthVital.predicted_glucose || 0,
+          confidence_score: finalHealthVital.confidence_score || 0,
+      };
+      await sendHealthReport(chatId, reportVitals);
     }
 
     return NextResponse.json({ message: 'Vitals ingested, analyzed, and stored successfully.' });
