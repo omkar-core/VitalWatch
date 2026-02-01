@@ -29,14 +29,14 @@ export default function DoctorPatientsPage() {
 
   const loading = patientsLoading || alertsLoading;
 
-  const filteredPatients = allPatients?.filter(patient =>
+  const filteredPatients = Array.isArray(allPatients) ? allPatients.filter(patient =>
     patient.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ) : [];
 
   const getStatus = (patientId: string) => {
-    const patientAlerts = alerts?.filter(a => a.patient_id === patientId);
-    if (patientAlerts?.some(a => a.severity === 'Critical')) return 'Critical';
-    if (patientAlerts?.some(a => a.severity === 'High')) return 'Needs Review';
+    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === patientId) : [];
+    if (patientAlerts.some(a => a.severity === 'Critical')) return 'Critical';
+    if (patientAlerts.some(a => a.severity === 'High')) return 'Needs Review';
     return 'Stable';
   };
 

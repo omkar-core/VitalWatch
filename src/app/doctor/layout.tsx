@@ -35,7 +35,7 @@ export default function DoctorLayout({
 
   const { data: alerts, isLoading: alertsLoading } = useSWR<AlertHistory[]>('/api/alerts', fetcher, { refreshInterval: 5000 });
 
-  const unreadAlerts = alerts?.filter(a => !a.acknowledged).length || 0;
+  const unreadAlerts = Array.isArray(alerts) ? alerts.filter(a => !a.acknowledged).length : 0;
   const loading = userLoading || alertsLoading;
 
   React.useEffect(() => {

@@ -59,22 +59,23 @@ export default function DoctorDashboard() {
 
   const loading = patientsLoading || alertsLoading || readingsLoading;
   
-  const criticalAlerts = alerts?.filter(a => (a.severity === 'Critical' || a.severity === 'High') && !a.acknowledged).slice(0, 2);
-  const criticalPatients = patients?.filter(p => {
-    const patientAlerts = alerts?.filter(a => a.patient_id === p.patient_id);
-    return patientAlerts?.some(a => a.severity === 'Critical' || a.severity === 'High');
-  }) || [];
+  const criticalAlerts = Array.isArray(alerts) ? alerts.filter(a => (a.severity === 'Critical' || a.severity === 'High') && !a.acknowledged).slice(0, 2) : [];
+  
+  const criticalPatients = Array.isArray(patients) ? patients.filter(p => {
+    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === p.patient_id) : [];
+    return patientAlerts.some(a => a.severity === 'Critical' || a.severity === 'High');
+  }) : [];
 
   const summaryCards = [
     {
       title: "Total Patients",
-      value: patients?.length || 0,
+      value: Array.isArray(patients) ? patients.length : 0,
       icon: <Users className="h-6 w-6 text-muted-foreground" />,
       loading: patientsLoading,
     },
     {
       title: "Active Alerts",
-      value: alerts?.filter(a => !a.acknowledged).length || 0,
+      value: Array.isArray(alerts) ? alerts.filter(a => !a.acknowledged).length : 0,
       icon: <Bell className="h-6 w-6 text-muted-foreground" />,
       loading: alertsLoading,
     },
@@ -118,9 +119,9 @@ export default function DoctorDashboard() {
                     <div className="flex justify-center items-center h-24">
                         <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
-                 ) : criticalAlerts && criticalAlerts.length > 0 ? (
+                 ) : criticalAlerts.length > 0 ? (
                     criticalAlerts.map(alert => {
-                        const patient = patients?.find(p => p.patient_id === alert.patient_id);
+                        const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === alert.patient_id) : null;
                         const isAcknowledging = acknowledgingId === alert.alert_id;
                         return (
                           <div key={alert.alert_id} className="p-4 border rounded-lg flex flex-wrap items-center justify-between gap-4 bg-background/50 border-destructive/20">
@@ -162,9 +163,9 @@ export default function DoctorDashboard() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {patients && patients.slice(0,4).map(p => {
-                                    const patientAlerts = alerts?.filter(a => a.patient_id === p.patient_id);
-                                    const status = patientAlerts?.some(a => a.severity === 'Critical') ? 'Critical' : patientAlerts?.some(a => a.severity === 'High') ? 'Needs Review' : 'Stable';
+                                {Array.isArray(patients) && patients.slice(0,4).map(p => {
+                                    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === p.patient_id) : [];
+                                    const status = patientAlerts.some(a => a.severity === 'Critical') ? 'Critical' : patientAlerts.some(a => a.severity === 'High') ? 'Needs Review' : 'Stable';
                                     return (
                                         <TableRow key={p.patient_id}>
                                             <TableCell className="font-medium">{p.name}</TableCell>
@@ -194,8 +195,8 @@ export default function DoctorDashboard() {
                 <CardContent>
                     {loading ? <Skeleton className="h-32 w-full" /> : (
                       <div className="space-y-4">
-                          {alerts && alerts.filter(a => !a.acknowledged).slice(0, 3).map(alert => {
-                              const patient = patients?.find(p => p.patient_id === alert.patient_id);
+                          {Array.isArray(alerts) && alerts.filter(a => !a.acknowledged).slice(0, 3).map(alert => {
+                              const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === alert.patient_id) : null;
                               return (
                                 <div key={alert.alert_id} className="flex items-start gap-3">
                                     <div className="flex-shrink-0 pt-1">
@@ -208,7 +209,7 @@ export default function DoctorDashboard() {
                                 </div>
                               )
                           })}
-                          {alerts?.filter(a => !a.acknowledged).length === 0 && <p className="text-sm text-muted-foreground">No unread notifications.</p>}
+                          {(!Array.isArray(alerts) || alerts.filter(a => !a.acknowledged).length === 0) && <p className="text-sm text-muted-foreground">No unread notifications.</p>}
                       </div>
                     )}
                 </CardContent>

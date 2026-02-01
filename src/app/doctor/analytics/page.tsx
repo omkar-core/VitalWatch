@@ -32,17 +32,19 @@ export default function DoctorAnalyticsPage() {
   const loading = patientsLoading || alertsLoading || statsLoading;
 
   const getStatus = (patientId: string) => {
-    const patientAlerts = alerts?.filter(a => a.patient_id === patientId);
-    if (!patientAlerts || patientAlerts.length === 0) return 'Stable';
+    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === patientId) : [];
+    if (patientAlerts.length === 0) return 'Stable';
     if (patientAlerts.some(a => a.severity === 'Critical')) return 'Critical';
     if (patientAlerts.some(a => a.severity === 'High')) return 'Needs Review';
     return 'Stable';
   };
+  
+  const patientsArray = Array.isArray(patients) ? patients : [];
 
   const riskDistribution = {
-    stable: patients?.filter(p => getStatus(p.patient_id) === 'Stable').length || 0,
-    needsReview: patients?.filter(p => getStatus(p.patient_id) === 'Needs Review').length || 0,
-    critical: patients?.filter(p => getStatus(p.patient_id) === 'Critical').length || 0,
+    stable: patientsArray.filter(p => getStatus(p.patient_id) === 'Stable').length,
+    needsReview: patientsArray.filter(p => getStatus(p.patient_id) === 'Needs Review').length,
+    critical: patientsArray.filter(p => getStatus(p.patient_id) === 'Critical').length,
   };
 
   const totalPatients = populationStats?.total_patients || 1; 

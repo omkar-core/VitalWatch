@@ -22,7 +22,7 @@ export default function PatientAlertsPage() {
              <div className="flex flex-1 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-        ) : alerts && alerts.length > 0 ? (
+        ) : Array.isArray(alerts) && alerts.length > 0 ? (
             alerts.map((item) => (
                 <Card key={item.alert_id}>
                     <CardHeader className="flex flex-row items-start gap-4">

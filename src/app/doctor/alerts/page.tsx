@@ -97,8 +97,8 @@ export default function DoctorAlertsPage() {
               </TableRow>
           </TableHeader>
           <TableBody>
-              {alerts && alerts.map((alert) => {
-                const patient = patients?.find(p => p.patient_id === alert.patient_id);
+              {Array.isArray(alerts) && alerts.map((alert) => {
+                const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === alert.patient_id) : null;
                 const isAcknowledging = acknowledgingId === alert.alert_id;
                 return (
                   <TableRow key={alert.alert_id} className={!alert.acknowledged ? 'bg-secondary/50' : ''}>
