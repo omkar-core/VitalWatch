@@ -2,6 +2,10 @@
 const GRIDDB_API_URL = process.env.GRIDDB_API_URL;
 const GRIDDB_USERNAME = process.env.GRIDDB_USERNAME;
 const GRIDDB_PASSWORD = process.env.GRIDDB_PASSWORD;
+const GRIDDB_TIMEOUT_MS = parseInt(process.env.GRIDDB_TIMEOUT_MS || '5000');
+const GRIDDB_RETRY_COUNT = parseInt(process.env.GRIDDB_RETRY_COUNT || '3');
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function griddbFetch(endpoint: string, options: RequestInit) {
   if (!GRIDDB_API_URL || !GRIDDB_USERNAME || !GRIDDB_PASSWORD) {
@@ -10,30 +14,57 @@ async function griddbFetch(endpoint: string, options: RequestInit) {
 
   const authHeader = `Basic ${Buffer.from(`${GRIDDB_USERNAME}:${GRIDDB_PASSWORD}`).toString('base64')}`;
   const url = `${GRIDDB_API_URL}/${endpoint}`;
+  
+  let lastError: Error | null = null;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': authHeader,
-      ...options.headers,
-    },
-  });
+  for (let i = 0; i < GRIDDB_RETRY_COUNT; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GRIDDB_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`GridDB API Error (${response.status}) on endpoint ${endpoint}:`, errorBody);
-    throw new Error(`GridDB API request failed with status ${response.status}`);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': authHeader,
+          ...options.headers,
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`GridDB API Error (Attempt ${i+1}/${GRIDDB_RETRY_COUNT}) on endpoint ${endpoint}:`, errorBody);
+        lastError = new Error(`GridDB API request failed with status ${response.status}`);
+        // If it's a client error (4xx), don't retry
+        if (response.status >= 400 && response.status < 500) {
+            throw lastError;
+        }
+        await sleep(500 * (i + 1)); // Exponential backoff
+        continue;
+      }
+
+      // Handle cases where GridDB returns an empty success response
+      const textBody = await response.text();
+      try {
+        return JSON.parse(textBody);
+      } catch (e) {
+        if (textBody === '') return {}; // Return empty object for empty success responses
+        return textBody; // Return text if not valid JSON but not empty
+      }
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        lastError = error;
+        if (error.name === 'AbortError') {
+            console.error(`GridDB request timed out after ${GRIDDB_TIMEOUT_MS}ms. Retrying...`);
+        }
+        await sleep(500 * (i + 1));
+    }
   }
 
-  // Handle cases where GridDB returns an empty success response
-  const textBody = await response.text();
-  try {
-    return JSON.parse(textBody);
-  } catch (e) {
-    if (textBody === '') return {}; // Return empty object for empty success responses
-    return textBody; // Return text if not valid JSON but not empty
-  }
+  throw new Error(`GridDB request failed after ${GRIDDB_RETRY_COUNT} retries. Last error: ${lastError?.message}`);
 }
 
 export async function createTable(tableName: string, columns: any[]) {
@@ -62,7 +93,7 @@ export async function createTable(tableName: string, columns: any[]) {
 
 
 export async function putRows(tableName: string, rows: any[]) {
-    await griddbFetch(`tables/${tableName}/rows`, {
+    return griddbFetch(`tables/${tableName}/rows`, {
         method: 'PUT',
         body: JSON.stringify(rows)
     });

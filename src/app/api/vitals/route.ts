@@ -5,7 +5,7 @@ import { sendHealthReport, sendCriticalAlert } from '@/lib/telegram';
 import { putRows, getRows } from '@/lib/griddb-client';
 import { validateDeviceRequest } from '@/lib/device-auth';
 import { randomUUID } from 'crypto';
-import { processVitals } from '@/lib/dual-architecture-processor';
+import { routeVitalsProcessing } from '@/lib/backendRouter';
 
 type IngestRequestBody = {
   vitals: ESP32Data[];
@@ -16,7 +16,6 @@ type IngestRequestBody = {
 export async function POST(request: NextRequest) {
   const body: IngestRequestBody = await request.json();
   
-  // 1. Authenticate Request
   const isInternalCall = body.internal_secret === process.env.INTERNAL_API_SECRET;
   if (!isInternalCall) {
     const authError = validateDeviceRequest(request);
@@ -34,9 +33,7 @@ export async function POST(request: NextRequest) {
 
     let finalHealthVital: HealthVital | null = null;
 
-    // Process each reading (usually just one from the bot/scan)
     for (const vital of incomingVitals) {
-      // 2. Fetch patient profile to get context and thresholds
       const patientProfileResults = await getRows('patient_profiles', `device_id='${vital.device_id}'`);
       
       if (!patientProfileResults.results || patientProfileResults.results.length === 0) {
@@ -51,15 +48,12 @@ export async function POST(request: NextRequest) {
           return obj;
       }, {});
 
-      // 3. Dual-Architecture Processing with Failover (using the unified adapter)
-      const { predictions, processed_by } = await processVitals(vital, patientProfile);
+      // Use the backend router to process vitals
+      const { predictions, processed_by } = await routeVitalsProcessing(vital, patientProfile);
 
-
-      // 4. Evaluate alert conditions based on AI output and fixed thresholds
       const alertMessages: string[] = [];
       let alert_severity: 'Critical' | 'High' = 'High';
 
-      // Check direct vitals against thresholds
       if (vital.heart_rate > (patientProfile.alert_threshold_hr_high || parseInt(process.env.HR_HIGH || '120'))) {
         alertMessages.push(`Critical heart rate detected: ${vital.heart_rate.toFixed(0)} BPM.`);
         alert_severity = 'Critical';
@@ -73,7 +67,6 @@ export async function POST(request: NextRequest) {
         alert_severity = 'Critical';
       }
       
-      // Check AI-driven predictions against thresholds
       if (predictions.estimated_systolic > (patientProfile.alert_threshold_bp_systolic_high || 140) && predictions.confidence_score > 0.5) {
          alertMessages.push(`AI detected high systolic BP risk: ~${predictions.estimated_systolic.toFixed(0)} mmHg.`);
          alert_severity = 'Critical';
@@ -86,7 +79,6 @@ export async function POST(request: NextRequest) {
       const alert_flag = alertMessages.length > 0;
       const now = new Date().toISOString();
       
-      // 5. Construct the full health vital record
       const healthVitalRecord: HealthVital = {
         timestamp: vital.timestamp,
         device_id: vital.device_id,
@@ -119,12 +111,10 @@ export async function POST(request: NextRequest) {
           healthVitalRecord.processed_by,
       ];
 
-      // 6. Save vitals to GridDB
       await putRows('health_vitals', [healthVitalRow]);
       
-      finalHealthVital = healthVitalRecord; // Keep the last processed vital for reporting
+      finalHealthVital = healthVitalRecord;
 
-      // 7. If alert triggered, save to GridDB and send Telegram notification
       if (alert_flag) {
         const alert_message = alertMessages.join(' ');
         const alertRecord: AlertHistory = {
@@ -168,14 +158,12 @@ export async function POST(request: NextRequest) {
         ];
         await putRows('alert_history', [alertRow]);
         
-        // Send Telegram alert to Doctor/Clinic
         if (process.env.TELEGRAM_CHAT_ID) {
           await sendCriticalAlert(process.env.TELEGRAM_CHAT_ID, alert_severity, `Patient ${patientProfile.name}: ${alert_message}`);
         }
       }
     }
 
-    // 8. If the request came from Telegram, send the full report back to the patient
     if (chatId && finalHealthVital) {
       await sendHealthReport(chatId, finalHealthVital);
     }

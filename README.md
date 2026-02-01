@@ -1,6 +1,6 @@
 # VitalWatch Platform
 
-**VitalWatch** is a comprehensive, AI-powered remote patient monitoring platform designed to manage Non-Communicable Diseases (NCDs) like diabetes and hypertension. It provides real-time health data from ESP32 devices, predictive alerts via Telegram, and dedicated portals for doctors, patients, and clinic administrators, all powered by a robust backend.
+**VitalWatch** is a comprehensive, AI-powered remote patient monitoring platform designed to manage Non-Communicable Diseases (NCDs) like diabetes and hypertension. It provides real-time health data from ESP32 devices, predictive alerts via Telegram, and dedicated portals for doctors, patients, and clinic administrators, all powered by a robust, dual-architecture backend with failover capabilities.
 
 This project was built as a demonstration of a scalable, robust, and modern healthcare IoT solution.
 
@@ -37,7 +37,9 @@ VitalWatch is built with a modern, scalable, and secure technology stack:
 
 - **Frontend:** [Next.js](https://nextjs.org/) with React (App Router) & [TypeScript](https://www.typescriptlang.org/)
 - **UI:** [Tailwind CSS](https://tailwindcss.com/) & [ShadCN UI](https://ui.shadcn.com/)
-- **Generative AI:** [Google Gemini](https://deepmind.google.com/technologies/gemini/) via [Genkit](https://firebase.google.com/docs/genkit) for health estimations.
+- **Generative AI:**
+    - **Primary:** [Google Gemini](https://deepmind.google.com/technologies/gemini/) via [Genkit](https://firebase.google.com/docs/genkit).
+    - **Secondary/Failover:** Custom ML Models hosted on [Azure Functions](https://azure.microsoft.com/en-us/products/functions).
 - **Database:** [GridDB](https://griddb.net/en/) via REST API
 - **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth)
 - **Deployment:** [Vercel](https://vercel.com/)
@@ -55,34 +57,43 @@ To run the VitalWatch platform locally, follow these steps:
     ```
 
 2.  **Set Up Environment Variables:**
-    Create a `.env.local` file in the project root and add your credentials for the various services:
+    Create a `.env.local` file in the project root and add your credentials for the various services. Use the `.env` file as a template.
     ```env
     # For Google AI (Gemini) features
-    GEMINI_API_KEY=YOUR_API_KEY_HERE
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 
     # For Telegram alert notifications and bot functionality
     TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
     TELEGRAM_CHAT_ID="THE_TARGET_USER_CHAT_ID"
     
     # For GridDB connection
-    GRIDDB_API_URL="YOUR_GRIDDB_API_URL"
-    GRIDDB_USERNAME="YOUR_GRIDDB_USERNAME"
-    GRIDDB_PASSWORD="YOUR_GRIDDB_PASSWORD"
+    GRIDDB_API_URL="https://cloud8737.griddb.com:443/griddb/v2/gs_clustermfcloud8737/dbs/32VcuKfC"
+    GRIDDB_USERNAME="s01QS5qsRB-israel"
+    GRIDDB_PASSWORD="israel"
+    GRIDDB_TIMEOUT_MS=5000
+    GRIDDB_RETRY_COUNT=3
     
-    # For Firebase (replace with your actual Firebase project config)
-    NEXT_PUBLIC_FIREBASE_API_KEY="YOUR_FIREBASE_API_KEY"
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="YOUR_FIREBASE_AUTH_DOMAIN"
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID="YOUR_FIREBASE_PROJECT_ID"
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
-    NEXT_PUBLIC_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
-    
-    # The public URL of your deployed application (for webhooks)
+    # The public URL of your deployed application (for webhooks, etc.)
     NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
+    # --- DUAL ARCHITECTURE ---
     # For Azure Function (Secondary AI Backend)
-    AZURE_FUNCTION_URL="YOUR_AZURE_FUNCTION_URL"
-    AZURE_FUNCTION_API_KEY="YOUR_AZURE_FUNCTION_KEY"
+    AZURE_FUNCTION_BASE_URL="https://predict01-g4ecdyayb9czgtft.centralindia-01.azurewebsites.net"
+    AZURE_FUNCTION_PREDICT_PATH="/api/predict"
+    AZURE_FUNCTION_KEY="YOUR_AZURE_FUNCTION_KEY_HERE"
+    AZURE_FUNCTION_TIMEOUT_MS=8000
+
+    # Backend Control Flags
+    PRIMARY_BACKEND="GEMINI" # Can be "GEMINI" or "AZURE"
+    ENABLE_AZURE_BACKEND=true
+    ENABLE_GEMINI_BACKEND=true
+    BACKEND_FAILOVER_ENABLED=true
+
+    # --- DEVICE & INTERNAL AUTH ---
+    # Secret key to authenticate requests from physical devices
+    DEVICE_API_KEY="VW_SECURE_2024_XYZ"
+    # Secret to bypass auth for internal server-to-server API calls
+    INTERNAL_API_SECRET="A_VERY_SECRET_INTERNAL_KEY"
     ```
 
 3.  **Run the Development Server:**
@@ -92,7 +103,7 @@ To run the VitalWatch platform locally, follow these steps:
     ```
 
 4.  **Set up the Telegram Webhook (Important for Bot Functionality):**
-    For the Telegram bot to work, you need to tell Telegram where to send updates. Run the following command in your terminal, replacing `YOUR_BOT_TOKEN` and `YOUR_VERCEL_URL` with your actual bot token and your deployed Vercel URL (or a service like ngrok for local development).
+    For the Telegram bot to work, you need to tell Telegram where to send updates. Run the following command in your terminal, replacing `<YOUR_BOT_TOKEN>` and `<YOUR_VERCEL_URL>` with your actual bot token and your deployed Vercel URL (or a service like ngrok for local development).
     ```bash
     curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_VERCEL_URL>/api/telegram/webhook"
     ```
