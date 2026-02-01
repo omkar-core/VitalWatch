@@ -84,9 +84,9 @@ To run the VitalWatch platform locally, follow these steps:
     AZURE_FUNCTION_TIMEOUT_MS=8000
 
     # Backend Control Flags
-    PRIMARY_BACKEND="GEMINI" # Can be "GEMINI" or "AZURE"
+    PRIMARY_BACKEND="NON_AZURE" # Can be "NON_AZURE" or "AZURE"
     ENABLE_AZURE_BACKEND=true
-    ENABLE_GEMINI_BACKEND=true
+    ENABLE_NON_AZURE_BACKEND=true
     BACKEND_FAILOVER_ENABLED=true
 
     # --- DEVICE & INTERNAL AUTH ---
