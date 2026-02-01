@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         device_id: vital.device_id,
         heart_rate: vital.heart_rate,
         spo2: vital.spo2,
-        temperature: vital.temperature,
+        temperature: vital.temperature || 36.9, // Provide a default if not present
         ppg_raw: vital.ppg_raw,
         predicted_bp_systolic: predictions.estimated_systolic,
         predicted_bp_diastolic: predictions.estimated_diastolic,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
             alert_message: alert_message,
             heart_rate: vital.heart_rate,
             spo2: vital.spo2,
-            temperature: vital.temperature,
+            temperature: healthVitalRecord.temperature,
             ppg_raw: vital.ppg_raw,
             predicted_glucose: healthVitalRecord.predicted_glucose,
             predicted_bp_systolic: healthVitalRecord.predicted_bp_systolic,

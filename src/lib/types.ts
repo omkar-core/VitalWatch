@@ -83,7 +83,7 @@ export type ESP32Data = {
   timestamp: string; // ISO 8601 format
   heart_rate: number;
   spo2: number;
-  temperature: number;
+  temperature?: number; // Make optional as real device may not send it
   ppg_raw: number;
 };
 
@@ -93,7 +93,7 @@ const VitalsSchema = z.object({
   timestamp: z.string().describe('ISO 8601 timestamp of the reading.'),
   heart_rate: z.number().describe('Heart rate in beats per minute (BPM).'),
   spo2: z.number().describe('Blood oxygen saturation percentage (SpO2).'),
-  temperature: z.number().describe('Body temperature in Celsius.'),
+  temperature: z.number().optional().describe('Body temperature in Celsius.'),
 });
 
 export const EstimateHealthMetricsInputSchema = z.object({

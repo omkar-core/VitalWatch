@@ -10,7 +10,7 @@ import { getFirebase } from '..';
 import type { UserRole, PatientProfile } from '@/lib/types';
 
 const firebaseNotConfiguredError = new Error(
-  "Firebase initialization failed. The application cannot connect to Firebase services."
+  'Firebase is not configured. Please check your firebase/config.ts file.'
 );
 
 export async function signUp(
@@ -53,7 +53,7 @@ export async function signUp(
     const now = new Date().toISOString();
     const newProfile: PatientProfile = {
       patient_id: user.uid,
-      device_id: user.uid, // Default device_id to user_id for the demo
+      device_id: 'patient-01', // Align with ESP32 device ID for demo
       name: displayName,
       email: email,
       is_active: true,

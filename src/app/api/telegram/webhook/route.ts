@@ -6,9 +6,8 @@ import { getRows } from '@/lib/griddb-client';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // For the demo, we'll hard-code the mapping between the chatID and a patientId.
-// In a real app, you'd look this up from the patient_profiles table
-// where you've stored the user's chat_id.
-const DEMO_PATIENT_ID = 'demouser'; 
+// This now aligns with the device ID from the ESP32 code.
+const DEMO_PATIENT_ID = 'patient-01'; 
 
 export async function POST(request: Request) {
   try {

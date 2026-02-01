@@ -80,7 +80,7 @@ To run the VitalWatch platform locally, follow these steps:
     # For Azure Function (Secondary AI Backend)
     AZURE_FUNCTION_BASE_URL="https://predict01-g4ecdyayb9czgtft.centralindia-01.azurewebsites.net"
     AZURE_FUNCTION_PREDICT_PATH="/api/predict"
-    AZURE_FUNCTION_KEY="YOUR_AZURE_FUNCTION_KEY_HERE"
+    AZURE_FUNCTION_KEY="REDACTED_AZURE_KEY"
     AZURE_FUNCTION_TIMEOUT_MS=8000
 
     # Backend Control Flags

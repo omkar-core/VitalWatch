@@ -13,7 +13,7 @@ const VitalsSchema = z.object({
   timestamp: z.string().describe('ISO 8601 timestamp of the reading.'),
   heart_rate: z.number().describe('Heart rate in beats per minute (BPM).'),
   spo2: z.number().describe('Blood oxygen saturation percentage (SpO2).'),
-  temperature: z.number().describe('Body temperature in Celsius.'),
+  temperature: z.number().optional().describe('Body temperature in Celsius.'),
 });
 
 const EstimateHealthMetricsInputSchema = z.object({
@@ -93,14 +93,14 @@ const estimateHealthMetricsPrompt = ai.definePrompt({
   **Current Vitals Data:**
   - Heart Rate: {{{current_vitals.heart_rate}}} BPM
   - SpO2: {{{current_vitals.spo2}}}%
-  - Temperature: {{{current_vitals.temperature}}}°C
+  {{#if current_vitals.temperature}} - Temperature: {{{current_vitals.temperature}}}°C {{/if}}
   - Timestamp: {{{current_vitals.timestamp}}}
 
   **Analysis Task:**
-  1.  **Blood Pressure Estimation:** Based on correlations between heart rate, SpO₂, temperature, and demographic data (age, gender), and considering the trend from historical data, provide a numerical estimation for Systolic and Diastolic blood pressure in mmHg. For example, a consistently high resting heart rate may correlate with higher blood pressure. A 50-year-old male with hypertension and a high heart rate would likely have a higher estimated BP than a healthy 25-year-old female with a normal heart rate.
-  2.  **Glucose Estimation:** Based on the inputs and historical trend, infer a potential blood glucose value in mg/dL. Certain patterns in heart rate variability (which you can infer from the provided signals, influenced by factors like temperature and stress) can be loosely correlated with glycemic changes. A user with diabetes and erratic heart rate patterns might have a higher estimated glucose level.
+  1.  **Blood Pressure Estimation:** Based on correlations between heart rate, SpO₂, temperature (if available), and demographic data (age, gender), and considering the trend from historical data, provide a numerical estimation for Systolic and Diastolic blood pressure in mmHg. For example, a consistently high resting heart rate may correlate with higher blood pressure. A 50-year-old male with hypertension and a high heart rate would likely have a higher estimated BP than a healthy 25-year-old female with a normal heart rate.
+  2.  **Glucose Estimation:** Based on the inputs and historical trend, infer a potential blood glucose value in mg/dL. Certain patterns in heart rate variability (which you can infer from the provided signals) can be loosely correlated with glycemic changes. A user with diabetes and erratic heart rate patterns might have a higher estimated glucose level.
   3.  **Confidence Score:** Provide an overall confidence score for your estimations from 0.0 to 1.0, where 1.0 is very confident. This score should reflect the inherent limitations of estimating BP and glucose from PPG data. Confidence should be lower for users with sparse data or complex medical histories.
-  4.  **Reasoning:** Briefly explain your reasoning for the numerical estimations. For example: "The elevated heart rate and the user's history of hypertension lead to a higher BP estimate. The glucose estimation is based on subtle HR variability changes, and the slightly elevated temperature was also factored in."
+  4.  **Reasoning:** Briefly explain your reasoning for the numerical estimations. For example: "The elevated heart rate and the user's history of hypertension lead to a higher BP estimate. The glucose estimation is based on subtle HR variability changes, and temperature was factored in, if available."
 
   Generate the response in the required JSON format.
   `,
