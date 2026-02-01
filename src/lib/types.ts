@@ -53,6 +53,7 @@ export interface HealthVital {
     alert_flag: boolean;
     created_at: string;
     confidence_score?: number;
+    processed_by?: 'GEMINI' | 'AZURE'; // New field for architecture tracking
 }
 
 export interface AlertHistory {

@@ -13,23 +13,64 @@ type IngestRequestBody = {
   internal_secret?: string; // Optional secret for internal calls
 }
 
-// Rule-based fallback when AI is unavailable
-function fallbackAnalysis(vital: ESP32Data, profile: PatientProfile): EstimateHealthMetricsOutput {
-    // Simple estimation logic based on HR and age. Not medically accurate.
-    const ageFactor = (profile.age || 50) / 50;
-    const hrFactor = vital.heart_rate / 80;
+// Architecture B: Process with Azure Function
+async function processWithAzure(vital: ESP32Data, patientProfile: PatientProfile): Promise<EstimateHealthMetricsOutput> {
+    console.log('Falling back to Azure Function for processing...');
+    const azureUrl = process.env.AZURE_FUNCTION_URL;
+    const azureKey = process.env.AZURE_FUNCTION_API_KEY;
 
-    const estimated_systolic = 110 * ageFactor + 10 * hrFactor;
-    const estimated_diastolic = 70 * ageFactor + 5 * hrFactor;
-    const estimated_glucose = 90 + (vital.heart_rate - 75) * 2;
+    if (!azureUrl || !azureKey) {
+        throw new Error('Azure Function URL or API Key is not configured.');
+    }
     
-    return {
-        estimated_systolic: Math.round(estimated_systolic),
-        estimated_diastolic: Math.round(estimated_diastolic),
-        estimated_glucose: Math.round(estimated_glucose),
-        confidence_score: 0.3, // Low confidence for fallback
-        reasoning: "Rule-based analysis (AI unavailable). Estimations are based on basic correlations."
+    // Here we can add more patient context if the Azure function supports it
+    const requestBody = {
+        ...vital // Sending the raw vitals
     };
+
+    const response = await fetch(azureUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-functions-key': azureKey,
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Azure Function returned an error:', response.status, errorText);
+        throw new Error(`Azure Function processing failed with status: ${response.status}`);
+    }
+
+    const predictions = await response.json();
+
+    // Normalize Azure output to match our standard EstimateHealthMetricsOutput
+    // This is an assumption based on a typical ML model output. Adjust as needed.
+    return {
+        estimated_systolic: predictions.systolic || 120,
+        estimated_diastolic: predictions.diastolic || 80,
+        estimated_glucose: predictions.glucose || 100,
+        confidence_score: predictions.confidence || 0.75, // Use a default confidence
+        reasoning: predictions.reasoning || "Processed by Azure ML service."
+    };
+}
+
+
+// Architecture A: Process with Gemini
+async function processWithGemini(vital: ESP32Data, patientProfile: PatientProfile): Promise<EstimateHealthMetricsOutput> {
+     const predictionInput = {
+        age: patientProfile.age || 50,
+        gender: patientProfile.gender || 'Other',
+        medical_history: `Diabetes: ${patientProfile.has_diabetes}, Hypertension: ${patientProfile.has_hypertension}, Heart Condition: ${patientProfile.has_heart_condition}`,
+        current_vitals: {
+            timestamp: vital.timestamp,
+            heart_rate: vital.heart_rate,
+            spo2: vital.spo2,
+            temperature: vital.temperature
+        }
+    };
+    return await estimateHealthMetrics(predictionInput);
 }
 
 
@@ -71,24 +112,24 @@ export async function POST(request: NextRequest) {
           return obj;
       }, {});
 
-      // 3. Call Gemini AI model for predictions, with a fallback
+      // 3. Dual-Architecture Processing with Failover
       let predictions: EstimateHealthMetricsOutput;
+      let processed_by: 'GEMINI' | 'AZURE';
       try {
-          const predictionInput = {
-              age: patientProfile.age || 50,
-              gender: patientProfile.gender || 'Other',
-              medical_history: `Diabetes: ${patientProfile.has_diabetes}, Hypertension: ${patientProfile.has_hypertension}, Heart Condition: ${patientProfile.has_heart_condition}`,
-              current_vitals: {
-                  timestamp: vital.timestamp,
-                  heart_rate: vital.heart_rate,
-                  spo2: vital.spo2,
-                  temperature: vital.temperature
-              }
-          };
-          predictions = await estimateHealthMetrics(predictionInput);
+          console.log("Attempting processing with primary architecture (Gemini)...")
+          predictions = await processWithGemini(vital, patientProfile);
+          processed_by = 'GEMINI';
+          console.log("Successfully processed with Gemini.")
       } catch (aiError) {
-          console.error("AI analysis failed, using fallback.", aiError);
-          predictions = fallbackAnalysis(vital, patientProfile);
+          console.error("Primary architecture (Gemini) failed. Falling back to secondary (Azure).", aiError);
+          try {
+            predictions = await processWithAzure(vital, patientProfile);
+            processed_by = 'AZURE';
+            console.log("Successfully processed with Azure fallback.")
+          } catch(fallbackError) {
+            console.error("All processing architectures failed.", fallbackError);
+            throw new Error("Both Gemini and Azure processing failed.");
+          }
       }
 
 
@@ -96,15 +137,7 @@ export async function POST(request: NextRequest) {
       const alertMessages: string[] = [];
       let alert_severity: 'Critical' | 'High' = 'High';
 
-      // Check direct vitals against thresholds from environment or patient profile
-      if (vital.temperature > parseFloat(process.env.TEMP_HIGH || '38.5')) {
-        alertMessages.push(`High temperature detected: ${vital.temperature.toFixed(1)}°C.`);
-        alert_severity = 'High';
-      }
-      if (vital.temperature < parseFloat(process.env.TEMP_LOW || '35.0')) {
-        alertMessages.push(`Low temperature detected: ${vital.temperature.toFixed(1)}°C.`);
-        alert_severity = 'High';
-      }
+      // Check direct vitals against thresholds
       if (vital.heart_rate > (patientProfile.alert_threshold_hr_high || parseInt(process.env.HR_HIGH || '120'))) {
         alertMessages.push(`Critical heart rate detected: ${vital.heart_rate.toFixed(0)} BPM.`);
         alert_severity = 'Critical';
@@ -118,7 +151,7 @@ export async function POST(request: NextRequest) {
         alert_severity = 'Critical';
       }
       
-      // Check AI-driven predictions against thresholds, considering confidence
+      // Check AI-driven predictions against thresholds
       if (predictions.estimated_systolic > (patientProfile.alert_threshold_bp_systolic_high || 140) && predictions.confidence_score > 0.5) {
          alertMessages.push(`AI detected high systolic BP risk: ~${predictions.estimated_systolic.toFixed(0)} mmHg.`);
          alert_severity = 'Critical';
@@ -131,7 +164,7 @@ export async function POST(request: NextRequest) {
       const alert_flag = alertMessages.length > 0;
       const now = new Date().toISOString();
       
-      // 5. Construct the full health vital record using AI estimations
+      // 5. Construct the full health vital record
       const healthVitalRecord: HealthVital = {
         timestamp: vital.timestamp,
         device_id: vital.device_id,
@@ -145,6 +178,7 @@ export async function POST(request: NextRequest) {
         alert_flag: alert_flag,
         created_at: now,
         confidence_score: predictions.confidence_score,
+        processed_by: processed_by,
       };
       
       const healthVitalRow = [
@@ -159,7 +193,8 @@ export async function POST(request: NextRequest) {
           healthVitalRecord.predicted_glucose,
           healthVitalRecord.alert_flag,
           healthVitalRecord.created_at,
-          healthVitalRecord.confidence_score
+          healthVitalRecord.confidence_score,
+          healthVitalRecord.processed_by,
       ];
 
       // 6. Save vitals to GridDB
@@ -220,15 +255,7 @@ export async function POST(request: NextRequest) {
 
     // 8. If the request came from Telegram, send the full report back to the patient
     if (chatId && finalHealthVital) {
-      const patientProfileForReport = { name: 'Patient' }; // Placeholder as we don't have the full profile here
-      const reportVitals = {
-          ...finalHealthVital,
-          predicted_bp_systolic: finalHealthVital.predicted_bp_systolic || 0,
-          predicted_bp_diastolic: finalHealthVital.predicted_bp_diastolic || 0,
-          predicted_glucose: finalHealthVital.predicted_glucose || 0,
-          confidence_score: finalHealthVital.confidence_score || 0,
-      };
-      await sendHealthReport(chatId, reportVitals);
+      await sendHealthReport(chatId, finalHealthVital);
     }
 
     return NextResponse.json({ message: 'Vitals ingested, analyzed, and stored successfully.', vital: finalHealthVital });

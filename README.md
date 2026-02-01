@@ -76,10 +76,13 @@ To run the VitalWatch platform locally, follow these steps:
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
     NEXT_PUBLIC_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="YOUR_FIREBASE_MEASUREMENT_ID"
     
     # The public URL of your deployed application (for webhooks)
     NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+    # For Azure Function (Secondary AI Backend)
+    AZURE_FUNCTION_URL="YOUR_AZURE_FUNCTION_URL"
+    AZURE_FUNCTION_API_KEY="YOUR_AZURE_FUNCTION_KEY"
     ```
 
 3.  **Run the Development Server:**
