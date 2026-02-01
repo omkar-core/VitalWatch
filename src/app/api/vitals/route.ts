@@ -1,78 +1,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { ESP32Data, PatientProfile, HealthVital, AlertHistory } from '@/lib/types';
-import { estimateHealthMetrics, EstimateHealthMetricsOutput } from '@/ai/flows/suggest-initial-diagnoses';
 import { sendHealthReport, sendCriticalAlert } from '@/lib/telegram';
 import { putRows, getRows } from '@/lib/griddb-client';
 import { validateDeviceRequest } from '@/lib/device-auth';
 import { randomUUID } from 'crypto';
+import { processVitals } from '@/lib/dual-architecture-processor';
 
 type IngestRequestBody = {
   vitals: ESP32Data[];
   chatId?: string; // Optional chatId for Telegram reporting
   internal_secret?: string; // Optional secret for internal calls
 }
-
-// Architecture B: Process with Azure Function
-async function processWithAzure(vital: ESP32Data, patientProfile: PatientProfile): Promise<EstimateHealthMetricsOutput> {
-    console.log('Falling back to Azure Function for processing...');
-    const azureUrl = process.env.AZURE_FUNCTION_URL;
-    const azureKey = process.env.AZURE_FUNCTION_API_KEY;
-
-    if (!azureUrl || !azureKey) {
-        throw new Error('Azure Function URL or API Key is not configured.');
-    }
-    
-    // Here we can add more patient context if the Azure function supports it
-    const requestBody = {
-        ...vital // Sending the raw vitals
-    };
-
-    const response = await fetch(azureUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-functions-key': azureKey,
-        },
-        body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Azure Function returned an error:', response.status, errorText);
-        throw new Error(`Azure Function processing failed with status: ${response.status}`);
-    }
-
-    const predictions = await response.json();
-
-    // Normalize Azure output to match our standard EstimateHealthMetricsOutput
-    // This is an assumption based on a typical ML model output. Adjust as needed.
-    return {
-        estimated_systolic: predictions.systolic || 120,
-        estimated_diastolic: predictions.diastolic || 80,
-        estimated_glucose: predictions.glucose || 100,
-        confidence_score: predictions.confidence || 0.75, // Use a default confidence
-        reasoning: predictions.reasoning || "Processed by Azure ML service."
-    };
-}
-
-
-// Architecture A: Process with Gemini
-async function processWithGemini(vital: ESP32Data, patientProfile: PatientProfile): Promise<EstimateHealthMetricsOutput> {
-     const predictionInput = {
-        age: patientProfile.age || 50,
-        gender: patientProfile.gender || 'Other',
-        medical_history: `Diabetes: ${patientProfile.has_diabetes}, Hypertension: ${patientProfile.has_hypertension}, Heart Condition: ${patientProfile.has_heart_condition}`,
-        current_vitals: {
-            timestamp: vital.timestamp,
-            heart_rate: vital.heart_rate,
-            spo2: vital.spo2,
-            temperature: vital.temperature
-        }
-    };
-    return await estimateHealthMetrics(predictionInput);
-}
-
 
 export async function POST(request: NextRequest) {
   const body: IngestRequestBody = await request.json();
@@ -112,25 +51,8 @@ export async function POST(request: NextRequest) {
           return obj;
       }, {});
 
-      // 3. Dual-Architecture Processing with Failover
-      let predictions: EstimateHealthMetricsOutput;
-      let processed_by: 'GEMINI' | 'AZURE';
-      try {
-          console.log("Attempting processing with primary architecture (Gemini)...")
-          predictions = await processWithGemini(vital, patientProfile);
-          processed_by = 'GEMINI';
-          console.log("Successfully processed with Gemini.")
-      } catch (aiError) {
-          console.error("Primary architecture (Gemini) failed. Falling back to secondary (Azure).", aiError);
-          try {
-            predictions = await processWithAzure(vital, patientProfile);
-            processed_by = 'AZURE';
-            console.log("Successfully processed with Azure fallback.")
-          } catch(fallbackError) {
-            console.error("All processing architectures failed.", fallbackError);
-            throw new Error("Both Gemini and Azure processing failed.");
-          }
-      }
+      // 3. Dual-Architecture Processing with Failover (using the unified adapter)
+      const { predictions, processed_by } = await processVitals(vital, patientProfile);
 
 
       // 4. Evaluate alert conditions based on AI output and fixed thresholds
