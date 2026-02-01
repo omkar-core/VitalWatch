@@ -60,18 +60,18 @@ To run the VitalWatch platform locally, follow these steps:
     Create a `.env.local` file in the project root and add your credentials for the various services. Use the `.env` file as a template.
     ```env
     # For Google AI (Gemini) features
-    GEMINI_API_KEY=AIzaSyDDpXsMv3ftqxUcrwnFSXVOMzdFd5d04-c
+    GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
 
     # For Telegram alert notifications and bot functionality
-    TELEGRAM_BOT_TOKEN="8554885311:AAFXuBiNE8vBnBbopB0Y_QTwDg8_5Qcsyj0"
-    TELEGRAM_CHAT_ID="1308906909"
+    TELEGRAM_BOT_TOKEN=<YOUR_TELEGRAM_BOT_TOKEN>
+    TELEGRAM_CHAT_ID=<YOUR_TELEGRAM_CHAT_ID>
 
     # For GridDB connection
     GRIDDB_HOST="cloud8737.griddb.com"
     GRIDDB_CLUSTER="gs_clustermfcloud8737"
     GRIDDB_DATABASE="32VcuKfC"
-    GRIDDB_USERNAME="S01QS5qsRB-user1"
-    GRIDDB_PASSWORD="abc@12345"
+    GRIDDB_USERNAME="<YOUR_GRIDDB_USERNAME>"
+    GRIDDB_PASSWORD="<YOUR_GRIDDB_PASSWORD>"
     GRIDDB_TIMEOUT_MS=5000
     GRIDDB_RETRY_COUNT=3
 
@@ -82,7 +82,7 @@ To run the VitalWatch platform locally, follow these steps:
     # For Azure Function (Secondary AI Backend)
     AZURE_FUNCTION_BASE_URL="https://predict01-g4ecdyayb9czgtft.centralindia-01.azurewebsites.net"
     AZURE_FUNCTION_PREDICT_PATH="/api/predict"
-    AZURE_FUNCTION_KEY="REDACTED_AZURE_KEY"
+    AZURE_FUNCTION_KEY="<YOUR_AZURE_FUNCTION_KEY>"
     AZURE_FUNCTION_TIMEOUT_MS=8000
 
     # Backend Control Flags
@@ -93,10 +93,10 @@ To run the VitalWatch platform locally, follow these steps:
 
     # --- DEVICE & INTERNAL AUTH ---
     # Secret key to authenticate requests from physical devices
-    DEVICE_API_KEY="VW_SECURE_2024_XYZ"
+    DEVICE_API_KEY="<YOUR_DEVICE_API_KEY>"
     ALLOWED_DEVICES="VitalWatch_ESP32_001,VitalWatch_ESP32_002"
     # Secret to bypass auth for internal server-to-server API calls
-    INTERNAL_API_SECRET="super_secret_internal_key_for_server_actions"
+    INTERNAL_API_SECRET="<YOUR_INTERNAL_API_SECRET>"
 
     # --- DEFAULT ALERT THRESHOLDS ---
     # These are used if a patient profile does not have specific thresholds set.
