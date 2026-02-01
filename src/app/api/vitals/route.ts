@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
             acknowledged: false,
             created_at: now
         };
+        
         const alertRow = [
             alertRecord.alert_timestamp,
             alertRecord.alert_id,
@@ -151,10 +152,12 @@ export async function POST(request: NextRequest) {
             alertRecord.predicted_bp_systolic,
             alertRecord.predicted_bp_diastolic,
             alertRecord.predicted_glucose,
+            alertRecord.confidence_score,
             alertRecord.acknowledged,
             alertRecord.acknowledged_at || null,
             alertRecord.created_at,
         ];
+
         await putRows('alert_history', [alertRow]);
         
         if (process.env.TELEGRAM_CHAT_ID) {
