@@ -13,7 +13,7 @@
         "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
         "email": { "type": "string", "format": "email" },
         "phone": { "type": "string" },
-        "avatar_url": { "type": "string", "description": "URL of the user's avatar image." },
+        "avatar_url": { "type": "string" },
         "baseline_hr": { "type": "number" },
         "baseline_spo2": { "type": "number" },
         "baseline_bp_systolic": { "type": "number" },
@@ -52,9 +52,10 @@
         "predicted_glucose": { "type": "number" },
         "alert_flag": { "type": "boolean" },
         "created_at": { "type": "string", "format": "date-time" },
-        "confidence_score": { "type": "number" }
+        "confidence_score": { "type": "number" },
+        "processed_by": { "type": "string", "enum": ["GEMINI", "AZURE"] }
       },
-      "required": ["timestamp", "device_id", "heart_rate", "spo2", "temperature", "ppg_raw", "alert_flag", "created_at"]
+      "required": ["timestamp", "device_id", "heart_rate", "spo2", "alert_flag", "created_at"]
     },
     "alert_history": {
       "title": "Alert History",
@@ -75,14 +76,25 @@
         "predicted_bp_systolic": { "type": "number" },
         "predicted_bp_diastolic": { "type": "number" },
         "predicted_glucose": { "type": "number" },
-        "confidence_score": { "type": "number", "description": "The AI model's confidence in the estimations that may have triggered the alert." },
+        "confidence_score": { "type": "number" },
         "acknowledged": { "type": "boolean" },
         "acknowledged_at": { "type": "string", "format": "date-time" },
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["alert_timestamp", "alert_id", "device_id", "alert_type", "severity", "alert_message", "acknowledged", "created_at"]
     },
-     "user": {
+    "scan_request": {
+      "title": "Scan Request",
+      "description": "Represents a request from a patient to trigger a vitals scan on their device.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["idle", "pending", "processing"] },
+        "requestedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status"]
+    },
+    "user": {
       "title": "User",
       "description": "Generic user for authentication and role management.",
       "type": "object",
@@ -104,6 +116,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/user" },
       "description": "Stores basic user auth info and role. All other medical data is stored in GridDB."
+    },
+    "/scan_requests/{userId}": {
+      "schema": { "$ref": "#/entities/scan_request" },
+      "description": "Stores the current scan state for a user."
     }
   }
 }

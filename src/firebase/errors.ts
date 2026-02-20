@@ -20,9 +20,14 @@ export class FirestorePermissionError extends Error {
   }
 
   toContextObject() {
+    // Explicitly mapping properties to ensure they are logged correctly
+    // as standard Error properties are often non-enumerable.
     return {
+      name: this.name,
       message: this.message,
-      context: this.context,
+      path: this.context.path,
+      operation: this.context.operation,
+      data: this.context.requestResourceData,
     };
   }
 }
