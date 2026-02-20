@@ -2,8 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function isValidUserRole(role) {
@@ -14,8 +18,7 @@ service cloud.firestore {
     // - Anyone can create their own user document (for signup).
     // - Users can read/update their own document.
     match /users/{userId} {
-      allow create: if request.auth != null 
-                    && isOwner(userId)
+      allow create: if isOwner(userId)
                     && request.resource.data.uid == userId
                     && isValidUserRole(request.resource.data.role)
                     && request.resource.data.email == request.auth.token.email
@@ -24,10 +27,17 @@ service cloud.firestore {
     }
 
     // Scan Requests:
-    // - A patient can request a scan for their own device.
+    // - A patient can read/write their own scan request document.
     // - This allows real-time UI updates during simulation and device commands.
     match /scan_requests/{userId} {
         allow read, write: if isOwner(userId);
+    }
+
+    // Device Commands:
+    // - Conceptual support for sending commands to devices.
+    // - For this demo, we allow patients to write to their own device command doc.
+    match /deviceCommands/{deviceId} {
+        allow read, write: if isAuthenticated();
     }
 
     // All medical data (patient profiles, vitals, alerts) are stored in GridDB
