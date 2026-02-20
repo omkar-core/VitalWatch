@@ -6,15 +6,24 @@ import { Home, List, Bell, Loader2, MessageSquare, Settings } from 'lucide-react
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
+import { Badge } from '@/components/ui/badge';
+import useSWR from 'swr';
+import type { AlertHistory } from '@/lib/types';
 
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 function BottomNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const { data: alerts } = useSWR<AlertHistory[]>(user ? `/api/alerts?patientId=${user.uid}` : null, fetcher, { refreshInterval: 5000 });
+
+  const unreadCount = Array.isArray(alerts) ? alerts.filter(a => !a.acknowledged).length : 0;
+
   const navItems = [
     { href: '/patient', icon: <Home size={24}/>, label: 'Home' },
     { href: '/patient/health-data', icon: <List size={24}/>, label: 'Records' },
     { href: '/patient/chat', icon: <MessageSquare size={24} />, label: 'Chat' },
-    { href: '/patient/alerts', icon: <Bell size={24}/>, label: 'Alerts' },
+    { href: '/patient/alerts', icon: <Bell size={24}/>, label: 'Alerts', badge: unreadCount },
     { href: '/patient/settings', icon: <Settings size={24} />, label: 'Settings' },
   ];
 
@@ -24,11 +33,16 @@ function BottomNav() {
             <div className="flex h-full items-center justify-around rounded-full bg-card shadow-lg border">
                 {navItems.map((item) => (
                     <Link key={item.href} href={item.href} className={cn(
-                        "flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-muted-foreground transition-colors w-16",
+                        "flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-muted-foreground transition-colors w-16 relative",
                         pathname === item.href ? 'text-primary' : 'hover:text-primary'
                     )}>
                         {item.icon}
                         <span className="text-xs font-medium">{item.label}</span>
+                        {item.badge !== undefined && item.badge > 0 && (
+                          <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] rounded-full">
+                            {item.badge > 9 ? '9+' : item.badge}
+                          </Badge>
+                        )}
                     </Link>
                 ))}
             </div>
@@ -76,7 +90,6 @@ export default function PatientLayout({
                     <p className="text-lg font-bold font-headline">Welcome, {userProfile?.display_name}</p>
                 </div>
             </div>
-            {/* Future icons for device status etc. can go here */}
         </header>
         <main className="flex-1 pb-24"> 
             {children}

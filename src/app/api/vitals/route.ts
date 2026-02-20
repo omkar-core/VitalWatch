@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import type { ESP32Data, PatientProfile, HealthVital, AlertHistory } from '@/lib/types';
 import { sendHealthReport, sendCriticalAlert } from '@/lib/telegram';
@@ -9,8 +8,8 @@ import { routeVitalsProcessing } from '@/lib/backendRouter';
 
 type IngestRequestBody = {
   vitals: ESP32Data[];
-  chatId?: string; // Optional chatId for Telegram reporting
-  internal_secret?: string; // Optional secret for internal calls
+  chatId?: string;
+  internal_secret?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -53,40 +52,39 @@ export async function POST(request: NextRequest) {
         temperature: vital.temperature || 36.9
       };
 
-      // Use the backend router to process vitals
       const { predictions, processed_by } = await routeVitalsProcessing(enrichedVital, patientProfile);
 
       const alertMessages: string[] = [];
       let alert_severity: 'Critical' | 'High' = 'High';
 
       if (enrichedVital.heart_rate > (patientProfile.alert_threshold_hr_high || parseInt(process.env.HR_HIGH || '120'))) {
-        alertMessages.push(`Critical heart rate detected: ${enrichedVital.heart_rate.toFixed(0)} BPM.`);
-        alert_severity = 'Critical';
+        alertMessages.push(`High heart rate: ${enrichedVital.heart_rate.toFixed(0)} BPM.`);
+        alert_severity = 'High';
       }
-       if (enrichedVital.heart_rate < (patientProfile.alert_threshold_hr_low || parseInt(process.env.HR_LOW || '50'))) {
-        alertMessages.push(`Critical low heart rate detected: ${enrichedVital.heart_rate.toFixed(0)} BPM.`);
-        alert_severity = 'Critical';
+      if (enrichedVital.heart_rate < (patientProfile.alert_threshold_hr_low || parseInt(process.env.HR_LOW || '50'))) {
+        alertMessages.push(`Low heart rate: ${enrichedVital.heart_rate.toFixed(0)} BPM.`);
+        alert_severity = 'High';
       }
       if (enrichedVital.spo2 < (patientProfile.alert_threshold_spo2_low || parseInt(process.env.SPO2_LOW || '92'))) {
-        alertMessages.push(`Critically Low SpO2 detected: ${enrichedVital.spo2.toFixed(1)}%.`);
+        alertMessages.push(`Low SpO2: ${enrichedVital.spo2.toFixed(1)}%.`);
         alert_severity = 'Critical';
       }
-      if (enrichedVital.temperature && enrichedVital.temperature > (patientProfile.alert_threshold_temp_high || parseFloat(process.env.TEMP_HIGH || '38.5'))) {
-        alertMessages.push(`High temperature detected: ${enrichedVital.temperature.toFixed(1)}°C.`);
-        alert_severity = 'Critical';
+      if (enrichedVital.temperature > (patientProfile.alert_threshold_temp_high || parseFloat(process.env.TEMP_HIGH || '38.5'))) {
+        alertMessages.push(`High temperature: ${enrichedVital.temperature.toFixed(1)}°C.`);
+        alert_severity = 'High';
       }
-      if (enrichedVital.temperature && enrichedVital.temperature < (patientProfile.alert_threshold_temp_low || parseFloat(process.env.TEMP_LOW || '35.0'))) {
-        alertMessages.push(`Low temperature detected: ${enrichedVital.temperature.toFixed(1)}°C.`);
-        alert_severity = 'Critical';
+      if (enrichedVital.temperature < (patientProfile.alert_threshold_temp_low || parseFloat(process.env.TEMP_LOW || '35.0'))) {
+        alertMessages.push(`Low temperature: ${enrichedVital.temperature.toFixed(1)}°C.`);
+        alert_severity = 'High';
       }
       
       if (predictions.estimated_systolic > (patientProfile.alert_threshold_bp_systolic_high || 140) && predictions.confidence_score > 0.5) {
-         alertMessages.push(`AI detected high systolic BP risk: ~${predictions.estimated_systolic.toFixed(0)} mmHg.`);
-         alert_severity = 'Critical';
+         alertMessages.push(`AI detected BP risk: ${predictions.estimated_systolic.toFixed(0)}/${predictions.estimated_diastolic.toFixed(0)} mmHg.`);
+         alert_severity = 'High';
       }
       if (predictions.estimated_glucose > (patientProfile.alert_threshold_glucose_high || 180) && predictions.confidence_score > 0.5) {
-         alertMessages.push(`AI detected high blood glucose risk: ~${predictions.estimated_glucose.toFixed(0)} mg/dL.`);
-         alert_severity = 'Critical';
+         alertMessages.push(`AI detected Glucose risk: ${predictions.estimated_glucose.toFixed(0)} mg/dL.`);
+         alert_severity = 'High';
       }
 
       const alert_flag = alertMessages.length > 0;
@@ -125,7 +123,6 @@ export async function POST(request: NextRequest) {
       ];
 
       await putRows('health_vitals', [healthVitalRow]);
-      
       finalHealthVital = healthVitalRecord;
 
       if (alert_flag) {
@@ -135,7 +132,7 @@ export async function POST(request: NextRequest) {
             alert_id: randomUUID(),
             device_id: enrichedVital.device_id,
             patient_id: patientProfile.patient_id,
-            alert_type: "AI/Vital Threshold Exceeded",
+            alert_type: "Vital Sign Out of Range",
             severity: alert_severity,
             alert_message: alert_message,
             heart_rate: enrichedVital.heart_rate,
@@ -190,14 +187,10 @@ export async function POST(request: NextRequest) {
       await sendHealthReport(chatId, finalHealthVital);
     }
 
-    return NextResponse.json({ message: 'Vitals ingested, analyzed, and stored successfully.', vital: finalHealthVital });
+    return NextResponse.json({ message: 'Success', vital: finalHealthVital });
 
   } catch (error: any) {
     console.error('[/api/vitals] Error:', error);
-    const chatId = body.chatId || process.env.TELEGRAM_CHAT_ID;
-    if (chatId) {
-        await sendTelegramMessage({ chatId, text: `*System Error:* Failed to process vitals. Details: ${error.message}`});
-    }
-    return NextResponse.json({ error: error.message || 'An internal server error occurred.' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
   }
 }
