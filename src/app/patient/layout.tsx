@@ -2,7 +2,7 @@
 import * as React from 'react';
 import Link from "next/link";
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, List, Bell, Loader2, MessageSquare, Settings } from 'lucide-react';
+import { Home, List, Bell, Loader2, MessageSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
@@ -24,7 +24,6 @@ function BottomNav() {
     { href: '/patient/health-data', icon: <List size={24}/>, label: 'Records' },
     { href: '/patient/chat', icon: <MessageSquare size={24} />, label: 'Chat' },
     { href: '/patient/alerts', icon: <Bell size={24}/>, label: 'Alerts', badge: unreadCount },
-    { href: '/patient/settings', icon: <Settings size={24} />, label: 'Settings' },
   ];
 
   return (

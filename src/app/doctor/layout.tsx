@@ -15,15 +15,15 @@ import {
 } from "@/components/ui/sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { VitalWatchLogo } from "@/components/icons";
-import { Settings, LayoutDashboard, Users, Bell, BarChart, LifeBuoy, Loader2 } from "lucide-react";
+import { LayoutDashboard, Users, Bell, LogOut, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from '@/firebase/auth/use-user';
 import useSWR from 'swr';
 import type { AlertHistory } from '@/lib/types';
-
+import { logout } from "@/firebase/auth/auth-service";
+import { useToast } from "@/hooks/use-toast";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
-
 
 export default function DoctorLayout({
   children,
@@ -32,6 +32,7 @@ export default function DoctorLayout({
 }) {
   const { user, userProfile, loading: userLoading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
 
   const { data: alerts, isLoading: alertsLoading } = useSWR<AlertHistory[]>('/api/alerts', fetcher, { refreshInterval: 5000 });
 
@@ -43,6 +44,23 @@ export default function DoctorLayout({
       router.push('/login');
     }
   }, [user, userProfile, userLoading, router]);
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "Successfully signed out.",
+      });
+      router.push('/login');
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: error.message,
+      });
+    }
+  };
   
   if (loading || !user || userProfile?.role !== 'doctor') {
     return (
@@ -56,8 +74,8 @@ export default function DoctorLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <Link href="/doctor" className="flex items-center gap-2" prefetch={false}>
-            <VitalWatchLogo className="w-7 h-7" />
+          <Link href="/doctor" className="flex items-center gap-2 px-2 py-4" prefetch={false}>
+            <VitalWatchLogo className="w-7 h-7 text-primary" />
             <span className="font-headline text-lg font-semibold">VitalWatch</span>
           </Link>
         </SidebarHeader>
@@ -67,32 +85,24 @@ export default function DoctorLayout({
               <SidebarMenuButton asChild tooltip="Dashboard">
                 <Link href="/doctor">
                   <LayoutDashboard />
-                  <span>Dashboard</span>
+                  <span>Clinical Dashboard</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Patient Management">
+              <SidebarMenuButton asChild tooltip="Patients">
                 <Link href="/doctor/patients">
                   <Users />
-                  <span>Patient Management</span>
+                  <span>Patient List</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Alerts & Notifications">
+              <SidebarMenuButton asChild tooltip="Alerts">
                 <Link href="/doctor/alerts">
                   <Bell />
-                  <span>Alerts & Notifications</span>
+                  <span>System Alerts</span>
                   {unreadAlerts > 0 && <Badge variant="destructive" className="ml-auto">{unreadAlerts}</Badge>}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Analytics & Reports">
-                <Link href="/doctor/analytics">
-                  <BarChart />
-                  <span>Analytics & Reports</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -101,26 +111,16 @@ export default function DoctorLayout({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Settings">
-                <Link href="/doctor/settings">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Support">
-                <Link href="/doctor/support">
-                  <LifeBuoy />
-                  <span>Support</span>
-                </Link>
+              <SidebarMenuButton onClick={handleSignOut} className="text-destructive hover:text-destructive">
+                <LogOut />
+                <span>Sign Out</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="bg-background">
-        <DashboardHeader title="Clinical Dashboard" userProfile={userProfile} />
+        <DashboardHeader title="Clinical Hub" userProfile={userProfile} />
         {children}
       </SidebarInset>
     </SidebarProvider>

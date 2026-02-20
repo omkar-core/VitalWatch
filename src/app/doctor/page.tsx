@@ -1,16 +1,9 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, AlertTriangle, Bell, Activity, Phone, Check, Loader2 } from "lucide-react";
+import { Users, AlertTriangle, Bell, Activity, Check, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
@@ -18,200 +11,141 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { PatientProfile, AlertHistory } from "@/lib/types";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function DoctorDashboard() {
   const { data: patients, isLoading: patientsLoading } = useSWR<PatientProfile[]>('/api/patients', fetcher);
   const { data: alerts, isLoading: alertsLoading } = useSWR<AlertHistory[]>('/api/alerts', fetcher);
-  const { data: readings, isLoading: readingsLoading } = useSWR<{count: number}>('/api/vitals/today', fetcher);
+  const { data: readingsToday, isLoading: readingsLoading } = useSWR<{count: number}>('/api/vitals/today', fetcher);
   const { mutate } = useSWRConfig();
   const { toast } = useToast();
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
 
+  const isDemo = (!patients || patients.length === 0) && !patientsLoading;
+
   const handleAcknowledge = async (alertId: string) => {
     setAcknowledgingId(alertId);
     try {
-        const res = await fetch(`/api/alerts/${alertId}/acknowledge`, {
-            method: 'POST',
-        });
-
-        if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error || 'Failed to acknowledge alert');
-        }
-
-        toast({
-            title: "Success",
-            description: "Alert has been acknowledged.",
-        });
+        const res = await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to acknowledge');
+        toast({ title: "Success", description: "Alert acknowledged." });
         mutate('/api/alerts');
     } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: "Error",
-            description: error.message,
-        });
+        toast({ variant: 'destructive', title: "Error", description: error.message });
     } finally {
         setAcknowledgingId(null);
     }
   };
 
-  const loading = patientsLoading || alertsLoading || readingsLoading;
+  const criticalAlerts = Array.isArray(alerts) ? alerts.filter(a => (a.severity === 'Critical' || a.severity === 'High') && !a.acknowledged).slice(0, 3) : [];
   
-  const criticalAlerts = Array.isArray(alerts) ? alerts.filter(a => (a.severity === 'Critical' || a.severity === 'High') && !a.acknowledged).slice(0, 2) : [];
-  
-  const criticalPatients = Array.isArray(patients) ? patients.filter(p => {
-    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === p.patient_id) : [];
-    return patientAlerts.some(a => a.severity === 'Critical' || a.severity === 'High');
-  }) : [];
-
-  const summaryCards = [
-    {
-      title: "Total Patients",
-      value: Array.isArray(patients) ? patients.length : 0,
-      icon: <Users className="h-6 w-6 text-muted-foreground" />,
-      loading: patientsLoading,
-    },
-    {
-      title: "Active Alerts",
-      value: Array.isArray(alerts) ? alerts.filter(a => !a.acknowledged).length : 0,
-      icon: <Bell className="h-6 w-6 text-muted-foreground" />,
-      loading: alertsLoading,
-    },
-    {
-      title: "Critical Risk",
-      value: criticalPatients.length,
-      icon: <AlertTriangle className="h-6 w-6 text-destructive" />,
-      loading: loading,
-    },
-    {
-      title: "Readings Today",
-      value: readings?.count.toLocaleString() || "0",
-      icon: <Activity className="h-6 w-6 text-muted-foreground" />,
-      loading: readingsLoading,
-    },
-  ];
-
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {summaryCards.map((card) => (
-                <Card key={card.title} className="transition-all hover:shadow-xl hover:-translate-y-1">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                        {card.icon}
-                    </CardHeader>
-                    <CardContent>
-                        {card.loading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{card.value}</div>}
-                    </CardContent>
-                </Card>
-            ))}
+    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/10">
+        <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold font-headline">Clinical Overview</h1>
+            <Badge variant="outline" className="bg-background">Live Monitoring Active</Badge>
         </div>
 
-        <Card className="transition-all hover:shadow-xl hover:-translate-y-1 border-2 border-destructive/50 bg-destructive/5">
-            <CardHeader>
-                <CardTitle className="text-destructive flex items-center gap-2"><AlertTriangle /> Critical Alerts (Requires Immediate Attention)</CardTitle>
-                <CardDescription>Patients with vitals that have crossed critical thresholds.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 {loading ? (
-                    <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                 ) : criticalAlerts.length > 0 ? (
-                    criticalAlerts.map(alert => {
-                        const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === alert.patient_id) : null;
-                        const isAcknowledging = acknowledgingId === alert.alert_id;
-                        return (
-                          <div key={alert.alert_id} className="p-4 border rounded-lg flex flex-wrap items-center justify-between gap-4 bg-background/50 border-destructive/20">
-                              <div className="flex-1 min-w-[200px]">
-                                  <p className="font-bold">{patient?.name || 'Unknown Patient'}</p>
-                                  <p className="text-sm"><span className="text-destructive font-semibold">{alert.alert_message}</span></p>
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                  <Button size="sm" asChild><Link href={`/doctor/patients/${alert.patient_id}`}><Users className="mr-2"/> View Details</Link></Button>
-                                  <Button size="sm" variant="outline"><Phone className="mr-2"/> Call Patient</Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleAcknowledge(alert.alert_id)} disabled={isAcknowledging}>
-                                    {isAcknowledging ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
-                                    Acknowledge
-                                </Button>
-                              </div>
-                          </div>
-                        )
-                    })
-                 ) : (
-                    <p className="text-sm text-muted-foreground">No critical alerts at this time.</p>
-                 )}
-            </CardContent>
-        </Card>
+        {isDemo && (
+            <Alert className="bg-primary/10 border-primary/20">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle>Simulation Mode</AlertTitle>
+                <AlertDescription>No active patients found. Add a patient via the registration portal or connect a device to see real-time data.</AlertDescription>
+            </Alert>
+        )}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4 transition-all hover:shadow-xl hover:-translate-y-1">
-                <CardHeader>
-                    <CardTitle>Patient Quick View</CardTitle>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-bold text-muted-foreground uppercase">Total Patients</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {loading ? <Skeleton className="h-48 w-full" /> : (
+                    <div className="text-2xl font-bold">{patients?.length || 0}</div>
+                </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-bold text-muted-foreground uppercase">Critical Alerts</CardTitle>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{criticalAlerts.length}</div>
+                </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-bold text-muted-foreground uppercase">Active Alerts</CardTitle>
+                    <Bell className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{alerts?.filter(a => !a.acknowledged).length || 0}</div>
+                </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-bold text-muted-foreground uppercase">Syncs Today</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{readingsToday?.count || 0}</div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-7">
+            <Card className="md:col-span-4 shadow-sm">
+                <CardHeader>
+                    <CardTitle className="text-sm font-bold">Patient Population Health</CardTitle>
+                </CardHeader>
+                <CardContent>
+                     {patientsLoading ? <Skeleton className="h-48 w-full" /> : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Risk</TableHead>
-                                <TableHead>Last Update</TableHead>
-                                <TableHead>Action</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase">Patient Name</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase">Status</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase">Last Sync</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {Array.isArray(patients) && patients.slice(0,4).map(p => {
-                                    const patientAlerts = Array.isArray(alerts) ? alerts.filter(a => a.patient_id === p.patient_id) : [];
-                                    const status = patientAlerts.some(a => a.severity === 'Critical') ? 'Critical' : patientAlerts.some(a => a.severity === 'High') ? 'Needs Review' : 'Stable';
-                                    return (
-                                        <TableRow key={p.patient_id}>
-                                            <TableCell className="font-medium">{p.name}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={status === 'Critical' ? 'destructive' : status === 'Needs Review' ? 'secondary' : 'default'} className={status === 'Stable' ? 'bg-green-500 hover:bg-green-500/80' : ''}>{status}</Badge>
-                                            </TableCell>
-                                            <TableCell>{formatDistanceToNow(new Date(p.updated_at || Date.now()), { addSuffix: true })}</TableCell>
-                                            <TableCell>
-                                                <Button asChild variant="link" size="sm"><Link href={`/doctor/patients/${p.patient_id}`}>View</Link></Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
+                                {Array.isArray(patients) && patients.length > 0 ? patients.slice(0, 5).map(p => (
+                                    <TableRow key={p.patient_id}>
+                                        <TableCell className="font-bold text-sm">{p.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary" className="text-[10px]">Active</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(p.updated_at), { addSuffix: true })}</TableCell>
+                                    </TableRow>
+                                )) : <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground text-xs uppercase font-bold">No clinical data available</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                      )}
-                     <Button variant="secondary" className="mt-4 w-full" asChild><Link href="/doctor/patients">View All Patients</Link></Button>
+                     <Button variant="secondary" className="mt-4 w-full text-xs font-bold uppercase tracking-tight" asChild><Link href="/doctor/patients">Manage Full List</Link></Button>
                 </CardContent>
             </Card>
-             <Card className="lg:col-span-3 transition-all hover:shadow-xl hover:-translate-y-1">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Recent Notifications</CardTitle>
-                    <Button asChild variant="secondary" size="sm">
-                        <Link href="/doctor/alerts">View All</Link>
-                    </Button>
+
+            <Card className="md:col-span-3 shadow-sm border-l-4 border-l-primary">
+                <CardHeader>
+                    <CardTitle className="text-sm font-bold">Critical Notifications</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-32 w-full" /> : (
-                      <div className="space-y-4">
-                          {Array.isArray(alerts) && alerts.filter(a => !a.acknowledged).slice(0, 3).map(alert => {
-                              const patient = Array.isArray(patients) ? patients.find(p => p.patient_id === alert.patient_id) : null;
-                              return (
-                                <div key={alert.alert_id} className="flex items-start gap-3">
-                                    <div className="flex-shrink-0 pt-1">
-                                        <Bell className={`h-4 w-4 ${alert.severity === 'Critical' || alert.severity === 'High' ? 'text-destructive' : 'text-yellow-500'}`} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium leading-tight">{patient?.name || 'Unknown Patient'}: {alert.alert_message}</p>
-                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(alert.alert_timestamp))} ago</p>
-                                    </div>
+                    <div className="space-y-4">
+                        {criticalAlerts.length > 0 ? criticalAlerts.map(alert => (
+                            <div key={alert.alert_id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                                <AlertTriangle className="h-4 w-4 text-destructive mt-1" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold leading-tight">{alert.alert_message}</p>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">{formatDistanceToNow(new Date(alert.alert_timestamp))} ago</p>
                                 </div>
-                              )
-                          })}
-                          {(!Array.isArray(alerts) || alerts.filter(a => !a.acknowledged).length === 0) && <p className="text-sm text-muted-foreground">No unread notifications.</p>}
-                      </div>
-                    )}
+                                <Button size="icon" variant="ghost" onClick={() => handleAcknowledge(alert.alert_id)} disabled={acknowledgingId === alert.alert_id}>
+                                    {acknowledgingId === alert.alert_id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Check className="h-3 w-3"/>}
+                                </Button>
+                            </div>
+                        )) : <p className="text-xs text-center py-10 font-bold uppercase text-muted-foreground tracking-widest">No pending critical alerts</p>}
+                    </div>
                 </CardContent>
             </Card>
         </div>

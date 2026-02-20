@@ -3,191 +3,146 @@
 import { useMemo } from 'react';
 import { VitalsChart } from "@/components/dashboard/vitals-chart";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Info } from "lucide-react";
 import type { HealthVital, PatientProfile } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { useUser } from '@/firebase/auth/use-user';
 import useSWR from 'swr';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const fetcher = (url: string) => fetch(url).then(res => {
-  if (!res.ok) {
-    const error = new Error('An error occurred while fetching the data.');
-    (error as any).status = res.status;
-    throw error;
-  }
-  return res.json()
-});
+const getMockHistory = (): HealthVital[] => {
+    const now = new Date();
+    return Array.from({ length: 15 }).map((_, i) => ({
+        timestamp: subDays(now, 15 - i).toISOString(),
+        device_id: 'demo',
+        heart_rate: 72 + Math.random() * 8,
+        spo2: 98,
+        temperature: 36.7,
+        ppg_raw: 1500,
+        predicted_bp_systolic: 118 + Math.random() * 10,
+        predicted_bp_diastolic: 78 + Math.random() * 5,
+        predicted_glucose: 95 + Math.random() * 20,
+        alert_flag: false,
+        created_at: new Date().toISOString(),
+    }));
+};
+
+const fetcher = (url: string) => fetch(url).then(res => res.ok ? res.json() : null);
 
 export default function PatientHealthDataPage() {
     const { user } = useUser();
+    const { data: patientProfile, isLoading: patientLoading } = useSWR<PatientProfile>(user ? `/api/patients/${user.uid}` : null, fetcher);
+    const { data: vitals, isLoading: vitalsLoading } = useSWR<HealthVital[]>(patientProfile?.device_id ? `/api/vitals/history/${patientProfile.device_id}` : null, fetcher);
 
-    const swrOptions = {
-      errorRetryInterval: 2000,
-      errorRetryCount: 5,
-    };
-
-    const { data: patientProfile, isLoading: patientLoading } = useSWR<PatientProfile>(user ? `/api/patients/${user.uid}` : null, fetcher, swrOptions);
-    const { data: vitals, isLoading: vitalsLoading } = useSWR<HealthVital[]>(patientProfile?.device_id ? `/api/vitals/history/${patientProfile.device_id}` : null, fetcher, swrOptions);
-
-    const isLoading = patientLoading || vitalsLoading;
+    const isDemo = !vitals || vitals.length === 0;
+    const displayData = isDemo ? getMockHistory() : vitals;
 
     const chartVitals = useMemo(() => 
-        vitals?.map(v => ({
-            ...v,
-            time: format(new Date(v.timestamp), 'p')
-        })) || [],
-    [vitals]);
+        displayData.map(v => ({ ...v, time: format(new Date(v.timestamp), 'MMM dd') })),
+    [displayData]);
 
     const glucoseSummary = useMemo(() => {
-      if (!vitals || vitals.length === 0) return { sum: 0, highest: 0, lowest: 0, inTarget: 0, aboveTarget: 0, belowTarget: 0 };
-      return vitals.reduce((acc, vital) => {
+      return displayData.reduce((acc, vital) => {
           const glucose = vital.predicted_glucose || 0;
           acc.sum += glucose;
           if (glucose > acc.highest) acc.highest = glucose;
           if (glucose < acc.lowest) acc.lowest = glucose;
-          if (glucose >= 70 && glucose <= 180) acc.inTarget++;
-          else if (glucose > 180) acc.aboveTarget++;
+          if (glucose >= 70 && glucose <= 140) acc.inTarget++;
+          else if (glucose > 140) acc.aboveTarget++;
           else acc.belowTarget++;
           return acc;
       }, { sum: 0, highest: 0, lowest: Infinity, inTarget: 0, aboveTarget: 0, belowTarget: 0 });
-    }, [vitals]);
+    }, [displayData]);
 
-    const totalVitals = vitals?.length || 0;
-    const averageGlucose = totalVitals > 0 ? Math.round(glucoseSummary.sum / totalVitals) : 0;
-    const timeInTarget = totalVitals > 0 ? Math.round((glucoseSummary.inTarget / totalVitals) * 100) : 0;
-    const timeAboveTarget = totalVitals > 0 ? Math.round((glucoseSummary.aboveTarget / totalVitals) * 100) : 0;
-    const timeBelowTarget = totalVitals > 0 ? Math.round((glucoseSummary.belowTarget / totalVitals) * 100) : 0;
+    const averageGlucose = Math.round(glucoseSummary.sum / displayData.length);
+    const timeInTarget = Math.round((glucoseSummary.inTarget / displayData.length) * 100);
+
+    if (patientLoading || vitalsLoading) return <div className="p-6 space-y-6"><Skeleton className='h-96 w-full' /><Skeleton className='h-64 w-full' /></div>;
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">My Health Data</h1>
-        <Button variant="outline" disabled={isLoading || !vitals || vitals.length === 0}>
-          <Download className="mr-2"/>Export to PDF
-        </Button>
+        <h1 className="text-xl font-bold font-headline">Health Records</h1>
+        <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4"/>Export Data</Button>
       </div>
 
-      {isLoading ? (
-         <div className="space-y-6">
-            <Skeleton className='h-96 w-full' />
-            <Skeleton className='h-64 w-full' />
-            <Skeleton className='h-96 w-full' />
-        </div>
-      ) : vitals && vitals.length > 0 ? (
-        <>
-          <Tabs defaultValue="glucose">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="glucose">Glucose Trends</TabsTrigger>
-                <TabsTrigger value="bp">Blood Pressure Trends</TabsTrigger>
-            </TabsList>
-            <TabsContent value="glucose">
-              <>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Glucose Trend (Last 7 Days)</CardTitle>
-                        <CardDescription>Target Range: 70-180 mg/dL</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <VitalsChart data={chartVitals} dataKey1="predicted_glucose" label1="Glucose (mg/dL)" color1="hsl(var(--chart-1))" />
-                    </CardContent>
-                </Card>
-                <Card className="mt-6">
-                    <CardHeader>
-                        <CardTitle>Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid md:grid-cols-3 gap-4">
-                        <div className="text-center p-4 border rounded-lg">
-                            <p className="text-sm text-muted-foreground">Average</p>
-                            <p className="text-2xl font-bold">{averageGlucose} <span className="text-sm font-normal">mg/dL</span></p>
-                        </div>
-                        <div className="text-center p-4 border rounded-lg">
-                            <p className="text-sm text-muted-foreground">Highest</p>
-                            <p className="text-2xl font-bold">{glucoseSummary.highest} <span className="text-sm font-normal">mg/dL</span></p>
-                        </div>
-                        <div className="text-center p-4 border rounded-lg">
-                            <p className="text-sm text-muted-foreground">Lowest</p>
-                            <p className="text-2xl font-bold">{isFinite(glucoseSummary.lowest) ? glucoseSummary.lowest : 0} <span className="text-sm font-normal">mg/dL</span></p>
-                        </div>
-                        <div className="md:col-span-3">
-                            <h4 className="font-semibold text-center mb-2">Time in Range</h4>
-                            <div className="flex w-full h-4 rounded-full overflow-hidden">
-                                <div className="bg-destructive" style={{ width: `${timeAboveTarget}%` }} title={`Above Target: ${timeAboveTarget}%`}></div>
-                                <div className="bg-green-500" style={{ width: `${timeInTarget}%` }} title={`In Target: ${timeInTarget}%`}></div>
-                                <div className="bg-yellow-500" style={{ width: `${timeBelowTarget}%` }} title={`Below Target: ${timeBelowTarget}%`}></div>
-                            </div>
-                            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                                <span>High</span>
-                                <span>In Range</span>
-                                <span>Low</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-              </>
-            </TabsContent>
-            <TabsContent value="bp">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Blood Pressure Trend (Last 7 Days)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <VitalsChart data={chartVitals} dataKey1="predicted_bp_systolic" label1="Systolic" color1="hsl(var(--chart-2))" dataKey2="predicted_bp_diastolic" label2="Diastolic" color2="hsl(var(--chart-3))"/>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-          </Tabs>
-          
-          <Card>
-            <CardHeader>
-                <CardTitle>Vitals History</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Glucose (mg/dL)</TableHead>
-                      <TableHead>Blood Pressure</TableHead>
-                      <TableHead>Heart Rate (bpm)</TableHead>
-                      <TableHead>SPO2 (%)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {vitals.map((vital, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{format(new Date(vital.timestamp), 'PPpp')}</TableCell>
-                        <TableCell>{vital.predicted_glucose?.toFixed(0)}</TableCell>
-                        <TableCell>{`${vital.predicted_bp_systolic?.toFixed(0)}/${vital.predicted_bp_diastolic?.toFixed(0)}`}</TableCell>
-                        <TableCell>{vital.heart_rate.toFixed(0)}</TableCell>
-                        <TableCell>{vital.spo2.toFixed(1)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-         <Card>
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center min-h-[60vh]">
-                <h3 className="text-2xl font-bold tracking-tight">No Health Data Recorded</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                Your health trends and history will appear here once you start scanning your vitals.
-                </p>
-            </CardContent>
-        </Card>
+      {isDemo && (
+        <Alert className="bg-primary/5 border-primary/20 mb-4">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle>Demo Records</AlertTitle>
+            <AlertDescription>No clinical data found. Displaying historical trends based on standard health profiles.</AlertDescription>
+        </Alert>
       )}
+
+      <Tabs defaultValue="glucose" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="glucose">Glucose Insight</TabsTrigger>
+            <TabsTrigger value="bp">BP Trends</TabsTrigger>
+        </TabsList>
+        <TabsContent value="glucose" className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm">Estimated Glucose Trend</CardTitle>
+                    <CardDescription>Estimated via PPG wave analysis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <VitalsChart data={chartVitals} dataKey1="predicted_glucose" label1="Glucose (mg/dL)" color1="hsl(var(--primary))" />
+                </CardContent>
+            </Card>
+            <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 text-center">
+                    <p className="text-xs text-muted-foreground font-bold uppercase">Average</p>
+                    <p className="text-2xl font-bold mt-1">{averageGlucose} <span className="text-xs font-normal">mg/dL</span></p>
+                </Card>
+                <Card className="p-4 text-center">
+                    <p className="text-xs text-muted-foreground font-bold uppercase">In Target</p>
+                    <p className="text-2xl font-bold mt-1">{timeInTarget}%</p>
+                </Card>
+            </div>
+        </TabsContent>
+        <TabsContent value="bp">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm">Blood Pressure Estimation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <VitalsChart data={chartVitals} dataKey1="predicted_bp_systolic" label1="SYS" color1="hsl(var(--chart-2))" dataKey2="predicted_bp_diastolic" label2="DIA" color2="hsl(var(--chart-3))"/>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <Card>
+        <CardHeader className="py-4">
+            <CardTitle className="text-sm font-bold uppercase tracking-tight">Reading History</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="text-xs font-bold">DATE</TableHead>
+                  <TableHead className="text-xs font-bold">GLUC</TableHead>
+                  <TableHead className="text-xs font-bold">BP</TableHead>
+                  <TableHead className="text-xs font-bold">HR</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayData.slice().reverse().map((vital, index) => (
+                  <TableRow key={index} className="hover:bg-muted/30">
+                    <TableCell className="text-xs font-medium">{format(new Date(vital.timestamp), 'MMM dd, HH:mm')}</TableCell>
+                    <TableCell className="text-xs font-bold">{vital.predicted_glucose?.toFixed(0)}</TableCell>
+                    <TableCell className="text-xs">{`${vital.predicted_bp_systolic?.toFixed(0)}/${vital.predicted_bp_diastolic?.toFixed(0)}`}</TableCell>
+                    <TableCell className="text-xs">{vital.heart_rate.toFixed(0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }
