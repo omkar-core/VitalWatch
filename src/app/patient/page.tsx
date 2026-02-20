@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -17,6 +16,8 @@ import { WaveformChart } from '@/components/dashboard/waveform-chart';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 // Helper function to get status colors
 const getStatusColor = (status: string) => {
@@ -75,6 +76,12 @@ export default function PatientPage() {
       if (data?.status) {
         setScanStatus(data.status);
       }
+    }, async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: scanDocRef.path,
+        operation: 'get',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, user]);
@@ -100,10 +107,19 @@ export default function PatientPage() {
     });
 
     const scanDocRef = doc(firestore, 'scan_requests', user.uid);
-    await setDoc(scanDocRef, {
+    const requestData = {
       status: 'pending',
       requestedAt: serverTimestamp()
-    });
+    };
+    
+    setDoc(scanDocRef, requestData)
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: scanDocRef.path,
+          operation: 'create',
+          requestResourceData: { ...requestData, requestedAt: 'serverTimestamp()' }
+        } satisfies SecurityRuleContext));
+      });
 
     // --- REAL-WORLD vs SIMULATION ---
     // In a real system, the ESP32 device would be polling the `scan_requests` collection.
@@ -121,7 +137,15 @@ export default function PatientPage() {
 
     setScanStatus('processing');
     const scanDocRef = doc(firestore, 'scan_requests', user.uid);
-    await setDoc(scanDocRef, { status: 'processing' }, { merge: true });
+    
+    setDoc(scanDocRef, { status: 'processing' }, { merge: true })
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: scanDocRef.path,
+          operation: 'update',
+          requestResourceData: { status: 'processing' }
+        } satisfies SecurityRuleContext));
+      });
 
     // 1. Simulate generating data
     const mockESP32Data = [{
@@ -143,7 +167,14 @@ export default function PatientPage() {
             title: 'Scan Failed!',
             description: result.error || "Did not receive new vital data from server.",
         });
-        await setDoc(scanDocRef, { status: 'idle' }, { merge: true });
+        setDoc(scanDocRef, { status: 'idle' }, { merge: true })
+          .catch(async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: scanDocRef.path,
+              operation: 'update',
+              requestResourceData: { status: 'idle' }
+            } satisfies SecurityRuleContext));
+          });
     } else {
         // Optimistically update the local data immediately
         mutateHistory([...(vitalsHistory || []), result.data.vital], { revalidate: false });
@@ -152,7 +183,15 @@ export default function PatientPage() {
             title: 'Scan Complete!',
             description: `Your latest vitals have been recorded and analyzed.`,
         });
-        await setDoc(scanDocRef, { status: 'idle', completedAt: serverTimestamp() }, { merge: true });
+        const completionData = { status: 'idle', completedAt: serverTimestamp() };
+        setDoc(scanDocRef, completionData, { merge: true })
+          .catch(async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: scanDocRef.path,
+              operation: 'update',
+              requestResourceData: { ...completionData, completedAt: 'serverTimestamp()' }
+            } satisfies SecurityRuleContext));
+          });
     }
   }
 

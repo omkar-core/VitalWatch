@@ -8,6 +8,8 @@ import {
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebase } from '..';
 import type { UserRole, PatientProfile } from '@/lib/types';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const firebaseNotConfiguredError = new Error(
   'Firebase is not configured correctly. Please check your configuration.'
@@ -39,13 +41,21 @@ export async function signUp(
 
   // Create user document in Firestore for role management
   const userRef = doc(firestore, 'users', user.uid);
-  await setDoc(userRef, {
+  const userData = {
     uid: user.uid,
     email: user.email,
     display_name: displayName,
     role: role,
     avatar_url: avatar_url,
     created_at: serverTimestamp(),
+  };
+
+  setDoc(userRef, userData).catch(async (error) => {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({
+      path: userRef.path,
+      operation: 'create',
+      requestResourceData: { ...userData, created_at: 'serverTimestamp()' },
+    } satisfies SecurityRuleContext));
   });
 
   // If the user is a patient, create a corresponding patient_profile in GridDB
