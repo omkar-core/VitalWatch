@@ -6,6 +6,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import useSWR from 'swr';
 import type { AlertHistory } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 const getMockAlerts = (): AlertHistory[] => [
     {
