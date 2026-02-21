@@ -58,6 +58,78 @@ Make sure you have Node.js (v18 or higher) and npm installed. Then, run the foll
 npm install
 ```
 
+### 2. Set Up Environment Variables
+
+Create a `.env.local` file in the project root and add your credentials for the various services. **Never commit this file to version control.**
+
+```env
+# ===================================
+# Google AI (Gemini) Configuration
+# ===================================
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# ===================================
+# Telegram Bot Configuration
+# ===================================
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here
+
+# ===================================
+# GridDB Configuration
+# ===================================
+GRIDDB_HOST=your_griddb_host_here
+GRIDDB_CLUSTER=your_griddb_cluster_name_here
+GRIDDB_DATABASE=your_griddb_database_name_here
+GRIDDB_USERNAME=your_griddb_username_here
+GRIDDB_PASSWORD=your_griddb_password_here
+GRIDDB_TIMEOUT_MS=5000
+GRIDDB_RETRY_COUNT=3
+
+# ===================================
+# Application URL
+# ===================================
+# The public URL of your deployed application (for webhooks, etc.)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ===================================
+# Azure Functions Configuration
+# ===================================
+# Secondary AI Backend for failover
+AZURE_FUNCTION_BASE_URL=your_azure_function_url_here
+AZURE_FUNCTION_PREDICT_PATH=/api/predict
+AZURE_FUNCTION_KEY=your_azure_function_key_here
+AZURE_FUNCTION_TIMEOUT_MS=8000
+
+# ===================================
+# Backend Control Flags
+# ===================================
+PRIMARY_BACKEND=NON_AZURE
+# Options: "NON_AZURE" or "AZURE"
+ENABLE_AZURE_BACKEND=true
+ENABLE_NON_AZURE_BACKEND=true
+BACKEND_FAILOVER_ENABLED=true
+
+# ===================================
+# Device & Internal Authentication
+# ===================================
+# Secret key to authenticate requests from physical devices
+DEVICE_API_KEY=your_secure_device_api_key_here
+ALLOWED_DEVICES=device1,device2,device3
+# Secret to bypass auth for internal server-to-server API calls
+INTERNAL_API_SECRET=your_internal_api_secret_here
+
+# ===================================
+# Default Alert Thresholds
+# ===================================
+# Used when patient profile doesn't have specific thresholds
+HR_HIGH=120
+HR_LOW=50
+SPO2_LOW=92
+TEMP_HIGH=38.5
+TEMP_LOW=35.0
+```
+
+> **⚠️ Security Notice:** Replace all placeholder values with your actual credentials. Keep the `.env.local` file secure and never commit it to version control. Add `.env.local` to your `.gitignore` file.
 
 ### 3. Run the Development Server
 
