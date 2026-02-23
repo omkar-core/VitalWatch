@@ -66,22 +66,22 @@ Create a `.env.local` file in the project root and add your credentials for the 
 # ===================================
 # Google AI (Gemini) Configuration
 # ===================================
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>
 
 # ===================================
 # Telegram Bot Configuration
 # ===================================
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-TELEGRAM_CHAT_ID=your_telegram_chat_id_here
+TELEGRAM_BOT_TOKEN=<YOUR_TELEGRAM_BOT_TOKEN>
+TELEGRAM_CHAT_ID=<YOUR_TELEGRAM_CHAT_ID>
 
 # ===================================
 # GridDB Configuration
 # ===================================
-GRIDDB_HOST=your_griddb_host_here
-GRIDDB_CLUSTER=your_griddb_cluster_name_here
-GRIDDB_DATABASE=your_griddb_database_name_here
-GRIDDB_USERNAME=your_griddb_username_here
-GRIDDB_PASSWORD=your_griddb_password_here
+GRIDDB_HOST=<YOUR_GRIDDB_HOST>
+GRIDDB_CLUSTER=<YOUR_GRIDDB_CLUSTER_NAME>
+GRIDDB_DATABASE=<YOUR_GRIDDB_DATABASE_NAME>
+GRIDDB_USERNAME=<YOUR_GRIDDB_USERNAME>
+GRIDDB_PASSWORD=<YOUR_GRIDDB_PASSWORD>
 GRIDDB_TIMEOUT_MS=5000
 GRIDDB_RETRY_COUNT=3
 
@@ -95,9 +95,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Azure Functions Configuration
 # ===================================
 # Secondary AI Backend for failover
-AZURE_FUNCTION_BASE_URL=your_azure_function_url_here
+AZURE_FUNCTION_BASE_URL=<YOUR_AZURE_FUNCTION_URL>
 AZURE_FUNCTION_PREDICT_PATH=/api/predict
-AZURE_FUNCTION_KEY=your_azure_function_key_here
+AZURE_FUNCTION_KEY=<YOUR_AZURE_FUNCTION_KEY>
 AZURE_FUNCTION_TIMEOUT_MS=8000
 
 # ===================================
@@ -113,10 +113,10 @@ BACKEND_FAILOVER_ENABLED=true
 # Device & Internal Authentication
 # ===================================
 # Secret key to authenticate requests from physical devices
-DEVICE_API_KEY=your_secure_device_api_key_here
+DEVICE_API_KEY=<YOUR_SECURE_DEVICE_API_KEY>
 ALLOWED_DEVICES=device1,device2,device3
 # Secret to bypass auth for internal server-to-server API calls
-INTERNAL_API_SECRET=your_internal_api_secret_here
+INTERNAL_API_SECRET=<YOUR_INTERNAL_API_SECRET>
 
 # ===================================
 # Default Alert Thresholds
